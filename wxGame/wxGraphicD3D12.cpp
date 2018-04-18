@@ -38,13 +38,13 @@ void wxGraphicD3D12::LoadGraphicAssets(void)
 #ifdef _X86
 	FileLoader::FileInfo fileVS = fileLoader.LoadBinary("../Debug/wxVS.cso"); //"../Debug/wxVS.cso"
 	FileLoader::FileInfo filePS = fileLoader.LoadBinary("../Debug/wxPS.cso"); //"../Debug/wxPS.cso"
-	dataBuffer = bmpDecoder.BMPLoader("../Debug/profile.bmp");
+	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/profile.bmp");
 	imgCommon = bmpDecoder.BMPParser(dataBuffer);
 
 #else
 	FileLoader::FileInfo fileVS = fileLoader.LoadBinary("../x64/Debug/wxVS.cso"); //"../Debug/wxVS.cso"
 	FileLoader::FileInfo filePS = fileLoader.LoadBinary("../x64/Debug/wxPS.cso"); //"../Debug/wxPS.cso"
-	dataBuffer = bmpDecoder.BMPLoader("../x64/Debug/profile.bmp");
+	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/profile.bmp");
 	imgCommon = bmpDecoder.BMPParser(dataBuffer);
 #endif
 	HRESULT hr;
@@ -904,7 +904,7 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	//matResult.wvpMatrix = matResult.viewMatrix * matResult.perspectiveMatrix * matResult.rotatYMatrix;
 
 	matResult.rotatYMatrix = MatrixRotationY(angleAxisY);
-	matResult.viewMatrix = BuildViewMatrix({ 0,0,-1.5 }, { 0,0,1 }, { 0,1,0 });
+	matResult.viewMatrix = BuildViewMatrix({ 0,0,-2 }, { 0,0,1 }, { 0,1,0 });
 	
 	matResult.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.4f * PI, m_aspect_ratio, 1.0f, 1000.0f);
 
