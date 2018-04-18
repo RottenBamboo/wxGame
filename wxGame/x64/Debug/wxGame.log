@@ -1,3 +1,0 @@
-﻿  wxGraphicD3D12.cpp
-d:\sourcecraft\wxgame\wxgame\databuffer.h(121): warning C4522: “DataBuffer”: 指定了多个赋值运算符
-  wxGame.vcxproj -> D:\SourceCraft\wxGame\x64\Debug\wxGame.exe
