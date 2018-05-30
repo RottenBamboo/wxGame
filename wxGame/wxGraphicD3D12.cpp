@@ -165,7 +165,7 @@ void wxGraphicD3D12::LoadAssets()
 #else
 	//FileLoader::FileInfo fileVS = fileLoader.LoadBinary("../x64/Debug/wxVS.cso"); //"../Debug/wxVS.cso"
 	//FileLoader::FileInfo filePS = fileLoader.LoadBinary("../x64/Debug/wxPS.cso"); //"../Debug/wxPS.cso"
-	dataBuffer = bmpDecoder.BMPLoader("wxAsset/profile.bmp");
+	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/profile.bmp");
 	imgCommon = bmpDecoder.BMPParser(dataBuffer);
 #endif
 
