@@ -3574,7 +3574,7 @@ DataResult OpenGexDataDescription::ProcessData(void)
 }
 
 
-void ReadOpenGEXFile()
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR commandLine, int cmdShow)
 {
 	// Import the file "Code/Example.ogex".
 
@@ -3611,4 +3611,6 @@ void ReadOpenGEXFile()
 
 		delete[] buffer;
 	}
+
+	return (0);
 }
