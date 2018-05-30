@@ -1,0 +1,45 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2002
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wxGame", "wxGame.vcxproj", "{16B13BB4-D82D-4AC1-8B40-C6BCCC99954B}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenGEX", "OpenGex-Import\OpenGEX\OpenGEX.vcxproj", "{8EF0F47D-3045-4C55-B736-5022167A4D3D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenDDL", "OpenGex-Import\OpenDDL\OpenDDL.vcxproj", "{1A000EBE-832E-4085-8853-B9298F8DD3BF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{16B13BB4-D82D-4AC1-8B40-C6BCCC99954B}.Debug|x64.ActiveCfg = Debug|x64
+		{16B13BB4-D82D-4AC1-8B40-C6BCCC99954B}.Debug|x64.Build.0 = Debug|x64
+		{16B13BB4-D82D-4AC1-8B40-C6BCCC99954B}.Debug|x86.ActiveCfg = Debug|x64
+		{16B13BB4-D82D-4AC1-8B40-C6BCCC99954B}.Release|x64.ActiveCfg = Release|x64
+		{16B13BB4-D82D-4AC1-8B40-C6BCCC99954B}.Release|x64.Build.0 = Release|x64
+		{16B13BB4-D82D-4AC1-8B40-C6BCCC99954B}.Release|x86.ActiveCfg = Release|x64
+		{8EF0F47D-3045-4C55-B736-5022167A4D3D}.Debug|x64.ActiveCfg = Debug|Win32
+		{8EF0F47D-3045-4C55-B736-5022167A4D3D}.Debug|x86.ActiveCfg = Debug|Win32
+		{8EF0F47D-3045-4C55-B736-5022167A4D3D}.Debug|x86.Build.0 = Debug|Win32
+		{8EF0F47D-3045-4C55-B736-5022167A4D3D}.Release|x64.ActiveCfg = Release|Win32
+		{8EF0F47D-3045-4C55-B736-5022167A4D3D}.Release|x86.ActiveCfg = Release|Win32
+		{8EF0F47D-3045-4C55-B736-5022167A4D3D}.Release|x86.Build.0 = Release|Win32
+		{1A000EBE-832E-4085-8853-B9298F8DD3BF}.Debug|x64.ActiveCfg = Debug|Win32
+		{1A000EBE-832E-4085-8853-B9298F8DD3BF}.Debug|x86.ActiveCfg = Debug|Win32
+		{1A000EBE-832E-4085-8853-B9298F8DD3BF}.Debug|x86.Build.0 = Debug|Win32
+		{1A000EBE-832E-4085-8853-B9298F8DD3BF}.Release|x64.ActiveCfg = Release|Win32
+		{1A000EBE-832E-4085-8853-B9298F8DD3BF}.Release|x86.ActiveCfg = Release|Win32
+		{1A000EBE-832E-4085-8853-B9298F8DD3BF}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CFE26032-BF1B-433D-9988-0481FB2A4071}
+	EndGlobalSection
+EndGlobal
