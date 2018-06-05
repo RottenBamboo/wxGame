@@ -1,6 +1,7 @@
 #pragma once
 #define ENUM(temp) enum temp
 #include <objbase.h>
+#include <utility>
 namespace wxGame {
 	enum wxSceneType
 	{
@@ -8,10 +9,21 @@ namespace wxGame {
 		wxSceneObjectTypeMaterial,
 		wxSceneObjectTypeTexture,
 		wxSceneObjectTypeLightOmni,
-		wxSceneObjectTypeLightInfi,
+		wxSceneObjectTypeLightDir,
 		wxSceneObjectTypeLightSpot,
+		wxSceneObjectTypeCamera,
+		wxSceneObjectTypeAnimationClip,
+		wxSceneObjectTypeClip,
+		wxSceneObjectTypeVertexArray,
+		wxSceneObjectTypeIndexArray,
+		wxSceneObjectTypeGeometry,
+		wxSceneObjectTypeTransform,
+		wxSceneObjectTypeTranslate,
+		wxSceneObjectTypeRotate,
+		wxSceneObjectTypeScale,
+		wxSceneObjectTypeTrack,
 	};
-
+	
 	class BaseSceneObject
 	{
 	protected:
@@ -19,8 +31,29 @@ namespace wxGame {
 		wxSceneType m_SceneType;
 	protected:
 		BaseSceneObject(GUID& guid, wxSceneType type) :m_Guid(guid), m_SceneType(type) {};
-		BaseSceneObject(GUID&& guid, wxSceneType type) :m_Guid(guid), m_SceneType(type) {};
-		BaseSceneObject(BaseSceneObject&& guid) : m_Guid() {};
+		BaseSceneObject(GUID&& guid, wxSceneType type) :m_Guid(std::move(guid)), m_SceneType(type) {};
+		BaseSceneObject(BaseSceneObject&& obj) : m_Guid(std::move(obj.m_Guid)), m_SceneType(obj.m_SceneType) {};
+		BaseSceneObject& operator=(BaseSceneObject&& obj) {
+			this->m_Guid = std::move(obj.m_Guid); this->m_SceneType = obj.m_SceneType; \
+				return *this;
+		}
+	private:
+		BaseSceneObject() = delete;
+		BaseSceneObject& operator=(BaseSceneObject& obj) = delete;
+	public:
+		const GUID& GetGuid() const
+		{
+			return m_Guid;
+		}
+
+		friend std::ostream& operator<<(std::ostream& out, const BaseSceneObject& obj)
+		{
+			out << "BaseSceneObject" << std::endl;
+			out << "____________" << std::endl;
+			out << "GUID" << obj.m_Guid << std::endl;
+			out << "Type" << obj.m_SceneType << std::endl;
+			return out;
+		}
 
 	};
 }
