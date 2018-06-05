@@ -112,6 +112,7 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="wxBaseSceneObject.h" />
     <ClInclude Include="BMPDecoder.h" />
     <ClInclude Include="DataBuffer.h" />
     <ClInclude Include="FileLoader.h" />
