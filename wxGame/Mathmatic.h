@@ -48,7 +48,7 @@ namespace Mathmatic
 			}
 		}
 
-		Vector(int vcount, T* vec)
+		Vector(int vcount, T* vec)	//vec pointer may be nullptr or the vcount may larger than the length of vec
 		{
 			int itr = 0;
 			for (int itrct = 0; itrct != count; itrct++)

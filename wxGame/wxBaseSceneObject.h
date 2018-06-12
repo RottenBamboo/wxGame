@@ -5,6 +5,7 @@
 namespace wxGame {
 	enum wxSceneType
 	{
+		wxSceneObjectTypeInValid,
 		wxSceneObjectTypeMesh,
 		wxSceneObjectTypeMaterial,
 		wxSceneObjectTypeTexture,
@@ -37,15 +38,15 @@ namespace wxGame {
 			this->m_Guid = std::move(obj.m_Guid); this->m_SceneType = obj.m_SceneType; \
 				return *this;
 		}
+		virtual ~BaseSceneObject() {};
 	private:
 		BaseSceneObject() = delete;
+		BaseSceneObject(BaseSceneObject& obj) = delete;
 		BaseSceneObject& operator=(BaseSceneObject& obj) = delete;
 	public:
-		const GUID& GetGuid() const
-		{
-			return m_Guid;
-		}
-
+		const GUID& GetGuid() const { return m_Guid; }
+		const wxSceneType GetType() const { return m_SceneType; }
+		 
 		friend std::ostream& operator<<(std::ostream& out, const BaseSceneObject& obj)
 		{
 			out << "BaseSceneObject" << std::endl;
