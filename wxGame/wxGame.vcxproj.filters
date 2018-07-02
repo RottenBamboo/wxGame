@@ -25,7 +25,9 @@
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SceneObjectVertex.cpp" />
+    <ClCompile Include="SceneObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BMPDecoder.h">
@@ -58,9 +60,6 @@
     <ClInclude Include="d3dx12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="wxBaseSceneObject.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="BaseTreeNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -70,7 +69,12 @@
     <ClInclude Include="BaseSceneNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SceneObjectVertex.h" />
+    <ClInclude Include="wxBaseSceneObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">

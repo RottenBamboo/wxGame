@@ -113,7 +113,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BaseTreeNode.h" />
-    <ClInclude Include="SceneObjectVertex.h" />
+    <ClInclude Include="SceneObject.h" />
     <ClInclude Include="wxBaseSceneObject.h" />
     <ClInclude Include="BMPDecoder.h" />
     <ClInclude Include="DataBuffer.h" />
@@ -132,7 +132,7 @@
     <ClCompile Include="BMPDecoder.cpp" />
     <ClCompile Include="DataBuffer.cpp" />
     <ClCompile Include="FileLoader.cpp" />
-    <ClCompile Include="SceneObjectVertex.cpp" />
+    <ClCompile Include="SceneObject.cpp" />
     <ClCompile Include="Win32Application.cpp" />
     <ClCompile Include="wxGraphicD3D12.cpp" />
     <ClCompile Include="GraphicD3D12.cpp" />
