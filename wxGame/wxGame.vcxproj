@@ -114,7 +114,7 @@
   <ItemGroup>
     <ClInclude Include="BaseTreeNode.h" />
     <ClInclude Include="SceneObject.h" />
-    <ClInclude Include="wxBaseSceneObject.h" />
+    <ClInclude Include="BaseSceneObject.h" />
     <ClInclude Include="BMPDecoder.h" />
     <ClInclude Include="DataBuffer.h" />
     <ClInclude Include="FileLoader.h" />

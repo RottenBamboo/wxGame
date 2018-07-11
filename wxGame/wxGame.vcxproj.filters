@@ -69,10 +69,10 @@
     <ClInclude Include="BaseSceneNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="wxBaseSceneObject.h">
+    <ClInclude Include="SceneObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SceneObject.h">
+    <ClInclude Include="BaseSceneObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

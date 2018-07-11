@@ -2,7 +2,7 @@
 #include "Mathmatic.h"
 #include <string>
 #include <vector>
-#include "wxBaseSceneObject.h"
+#include "BaseSceneObject.h"
 #include "BMPDecoder.h"
 using namespace Mathmatic;
 namespace wxGame
@@ -65,7 +65,7 @@ namespace wxGame
 	};
 
 	template<typename T>
-	struct ParameterMap 
+	struct ParameterMap
 	{
 		bool bUsingSingValue = true;
 
@@ -74,7 +74,7 @@ namespace wxGame
 			ImageCommon* Map;
 		};
 	};
-	
+
 	typedef ParameterMap<Vector2FT> Color;
 	typedef ParameterMap<Vector3FT> Normal;
 	typedef ParameterMap<float>		Parameter;
@@ -90,6 +90,24 @@ namespace wxGame
 		Parameter m_AmbientOcclusion;
 	public:
 		SceneObjectMaterial() :BaseSceneObject(wxSceneType::wxSceneObjectTypeMaterial) {};
+	};
+
+	class SceneObjectGeometry :public BaseSceneObject
+	{
+	protected:
+		std::vector<SceneObjectMesh*> m_Mesh;
+		bool m_bVisible;
+		bool m_bShadow;
+		bool m_bMotionBlur;
+	public:
+		SceneObjectGeometry() :BaseSceneObject(wxSceneType::wxSceneObjectTypeGeometry) {}
+		void SetVisibility(bool visible) { m_bVisible = visible; }
+		const bool Visible() { return m_bVisible; }
+		void SetIfCastShadow(bool shadow) { m_bShadow = shadow; }
+		const bool CastShadow() { return m_bShadow; }
+		void SetIfMotionBlur(bool motion_blur) { m_bMotionBlur = motion_blur; }
+		const bool MotionBlur() { return m_bMotionBlur; }
+		void AddMesh(SceneObjectMesh*& mesh) { m_Mesh.push_back(std::move(mesh)); }
 	};
 
 	typedef	float(*AttenFunc)(float, float);
@@ -138,5 +156,30 @@ namespace wxGame
 	{
 	protected:
 		float m_fFov;
+	};
+
+	class SceneObjectTransform
+	{
+	protected:
+		Matrix4X4FT m_matrix;
+		bool m_bSceneObjectOnly;
+	public:
+		SceneObjectTransform() { MatrixIdentity(m_matrix); m_bSceneObjectOnly = false; }
+		SceneObjectTransform(const Matrix4X4FT& matrix, const bool object_only = false) { m_matrix = matrix; m_bSceneObjectOnly = object_only; }
+		friend std::ostream& operator<<(std::ostream& out, const SceneObjectTransform& obj)
+		{
+			//out << "Transform Matrix:" << obj.m_matrix << std::endl;
+			out << "Is Object Local:" << obj.m_bSceneObjectOnly << std::endl;
+
+			return out;
+		}
+	};
+	class SceneObjectTranslation :public SceneObjectTransform
+	{
+	public:
+		SceneObjectTranslation(const Vector3FT& vec3)
+		{
+			MatrixTranslation(vec3);
+		}
 	};
 }
