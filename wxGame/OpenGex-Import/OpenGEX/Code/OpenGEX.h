@@ -457,13 +457,16 @@ namespace OGEX
 			GeometryObjectStructure					*geometryObjectStructure;
 			Array<const MaterialStructure *, 4>		materialStructureArray;
 
-			const ObjectStructure *GetObjectStructure(void) const;
-
 		public:
 
 			GeometryNodeStructure();
 			~GeometryNodeStructure();
 
+			const ObjectStructure *GetObjectStructure(void) const;
+			auto GetMaterialStructureArray(void) const -> decltype(materialStructureArray);
+			bool GetVisibleFlag(void) const;
+			bool GetShadowFlag(void) const;
+			bool GetMotionBlurFlag(void) const;
 			bool ValidateProperty(const DataDescription *dataDescription, const String& identifier, DataType *type, void **value);
 			bool ValidateSubstructure(const DataDescription *dataDescription, const Structure *structure) const;
 			DataResult ProcessData(DataDescription *dataDescription);

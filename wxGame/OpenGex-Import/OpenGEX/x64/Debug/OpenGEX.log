@@ -1,3 +1,0 @@
-﻿  OpenGEX.cpp
-d:\sourcecraft\wxgame\opengex-import\opengex\code\opengex.cpp(1310): warning C4244: “参数”: 从“ODDL::machine”转换到“ODDL::int32”，可能丢失数据
-  OpenGEX.vcxproj -> D:\SourceCraft\wxGame\x64\Debug\OpenGEX.lib

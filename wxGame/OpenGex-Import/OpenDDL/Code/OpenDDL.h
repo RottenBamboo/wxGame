@@ -762,7 +762,7 @@ namespace ODDL
 
 			KeyType GetKey(void) const
 			{
-				return (structureName);
+				return (structureName );
 			}
 
 			StructureType GetStructureType(void) const

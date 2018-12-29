@@ -38,6 +38,7 @@ public:
 
 protected:
 	std::wstring GetAssetFullPath(LPCWSTR assetName);
+	std::wstring GetPathFromRoot(LPCWSTR assetName);
 	void GetHardwareAdapter(_In_ IDXGIFactory2* pFactory, _Outptr_result_maybenull_ IDXGIAdapter1** ppAdapter);
 	void SetCustomWindowText(LPCWSTR text);
 

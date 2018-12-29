@@ -8,8 +8,9 @@
 // PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 //
 //*********************************************************
-
+#pragma once
 #include "stdafx.h"
+#include "util.h"
 #include "wxGraphicD3D12.h"
 
 _Use_decl_annotations_

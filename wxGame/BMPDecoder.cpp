@@ -4,6 +4,7 @@
 #include "FileLoader.h"
 #include <algorithm>
 using namespace Mathmatic;
+using namespace wxGame;
 ImageCommon BMPDecoder::BMPParser(DataBuffer& dataBuffer)
 {
 	const BITMAP_FILE_HEADER* pBitMapFileHeader = reinterpret_cast<BITMAP_FILE_HEADER*>(dataBuffer.GetData());
@@ -27,15 +28,14 @@ ImageCommon BMPDecoder::BMPParser(DataBuffer& dataBuffer)
 	imgCommon.imWidth = pBitMapInfoHeader->biWidth;
 	imgCommon.imHeight = pBitMapInfoHeader->biHeight;
 	imgCommon.imBitCount = 32;
-	unsigned int byteCount = imgCommon.imBitCount >> 3;//bitcount divide 8 is byte number
+	unsigned int byteCount = imgCommon.imBitCount >> 3;//bitcount divide 8 is equal with the byte count
 	imgCommon.imPitch = ((imgCommon.imWidth * byteCount) + 3)&~3;	//the size of each pitch should be multiply by 4, we add 3 and set the last two bit to zero.
 	imgCommon.imDataSize = imgCommon.imPitch * imgCommon.imHeight;
 	DataBuffer* pDataBuff = new DataBuffer(nullptr, imgCommon.imDataSize, imgCommon.imPitch);
 	imgCommon.imData = pDataBuff->GetData();
 
-	if (pBitMapInfoHeader->biBitCount == 24)
+	if (pBitMapInfoHeader->biBitCount == 24)//make 24 bits format transform to 32 bits format
 	{
-		std::cout << "only true color format of BMP" << std::endl;
 		Vector<4, unsigned char> *destData;
 		Vector<3, unsigned char> *srcData;
 		const unsigned char* dataBegin = dataBuffer.GetData() + pBitMapFileHeader->bfOffBits;
@@ -80,7 +80,7 @@ DataBuffer BMPDecoder::BMPLoader(const char * filename)
 {
 	FileLoader fileLoader;
 	FileLoader::FileInfo fileInfo;
-	fileInfo = fileLoader.LoadBinary(filename);
+	fileInfo = fileLoader.LoadBinary(filename, true);
 	DataBuffer dataBuffer((void*)fileInfo.fileItself, fileInfo.fileLength, 4);
 	return dataBuffer;
 }

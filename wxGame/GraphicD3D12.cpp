@@ -37,6 +37,11 @@ std::wstring GraphicD3D12::GetAssetFullPath(LPCWSTR assetName)
 	return m_assetsPath + assetName;
 }
 
+//std::wstring GraphicD3D12::GetPathFromRoot(LPCWSTR assetName)
+//{
+//
+//}
+
 // Helper function for acquiring the first available hardware adapter that supports Direct3D 12.
 // If no such adapter can be found, *ppAdapter will be set to nullptr.
 _Use_decl_annotations_

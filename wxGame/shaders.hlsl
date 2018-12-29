@@ -14,7 +14,6 @@ cbuffer cmatrix:register(b0)
 	matrix rotatMatrix;
 	matrix viewMatrix;
 	matrix perspectiveMatrix;
-	matrix wvpMatrix;
 }
 
 struct PSInput
@@ -29,10 +28,9 @@ SamplerState g_sampler : register(s0);
 PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD)
 {
 	PSInput result;
-
-	result.position = mul(position, wvpMatrix);
-	//result.position = position;
-	result.uv = uv;
+	result.position = mul(perspectiveMatrix, mul(viewMatrix, mul(rotatMatrix, position)));
+	result.uv.x = uv.x;
+	result.uv.y = 1.f - uv.y;//v should be vertically reversed because the texture mapping is opposite direction when right hand coordinate transformed to left hand coordinate.
 
 	return result;
 }

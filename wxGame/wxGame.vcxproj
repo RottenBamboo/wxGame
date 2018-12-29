@@ -43,8 +43,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)bin\$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -54,24 +53,26 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(PorjectDir)OpenGex-Import\OpenGEX\Code\;$(PorjectDir)OpenGex-Import\OpenDDL\Code\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;OpenGEX.lib;OpenDDL.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>d3d12.dll</DelayLoadDLLs>
+      <AdditionalLibraryDirectories>E:\Code\wxGame\wxGame\bin\Debug;$(ProjectDir)bin\Debug\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CustomBuildStep>
       <TreatOutputAsContent>true</TreatOutputAsContent>
     </CustomBuildStep>
     <CustomBuild>
-      <Command>copy %(Identity) "$(OutDir)" &gt; NUL</Command>
       <Outputs>$(OutDir)\%(Identity)</Outputs>
       <TreatOutputAsContent>true</TreatOutputAsContent>
     </CustomBuild>
@@ -113,12 +114,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BaseTreeNode.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Scene.h" />
+    <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneObject.h" />
     <ClInclude Include="BaseSceneObject.h" />
     <ClInclude Include="BMPDecoder.h" />
     <ClInclude Include="DataBuffer.h" />
     <ClInclude Include="FileLoader.h" />
     <ClInclude Include="Mathmatic.h" />
+    <ClInclude Include="util.h" />
     <ClInclude Include="Win32Application.h" />
     <ClInclude Include="wxGraphicD3D12.h" />
     <ClInclude Include="d3dx12.h" />
@@ -126,12 +131,16 @@
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="wxScene.h" />
-    <ClInclude Include="BaseSceneNode.h" />
+    <ClInclude Include="SceneNode.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BMPDecoder.cpp" />
     <ClCompile Include="DataBuffer.cpp" />
     <ClCompile Include="FileLoader.cpp" />
+    <ClCompile Include="OpenGEXDecoder.h" />
+    <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="SceneDecoder.h" />
+    <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneObject.cpp" />
     <ClCompile Include="Win32Application.cpp" />
     <ClCompile Include="wxGraphicD3D12.cpp" />

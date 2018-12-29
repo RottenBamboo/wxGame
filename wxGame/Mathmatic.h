@@ -65,6 +65,23 @@ namespace Mathmatic
 			}
 		}
 
+		Vector(int vcount,const T* vec)	//vec pointer may be nullptr or the vcount may larger than the length of vec
+		{
+			int itr = 0;
+			for (int itrct = 0; itrct != count; itrct++)
+			{
+				if (itr < vcount)
+				{
+					element[itr] = vec[itr];
+					itr++;
+				}
+				else
+				{
+					element[itr] = 0;
+				}
+			}
+		}
+
 		Vector<count, T>& operator=(const Vector<count, T>& vec2)
 		{
 			for (int itr = 0; itr != count; itr++)
@@ -252,6 +269,38 @@ namespace Mathmatic
 			}
 		}
 
+		Matrix(int matcount, const T* mat)
+		{
+			for (int itr1 = 0; itr1 != rows; itr1++)
+			{
+				for (int itr2 = 0; itr2 != cols; itr2++)
+				{
+					if (itr2 + itr1 * cols < matcount)
+					{
+						element[itr1][itr2] = mat[itr1 * cols + itr2];
+					}
+					else
+					{
+						element[itr1][itr2] = 0;
+					}
+				}
+			}
+		}
+
+		Matrix(Vector<4, T>& vec1, Vector<4, T>& vec2, Vector<4, T>& vec3, Vector<4, T>& vec4)
+		{
+			if ((cols == 4) && (rows == 4))
+			{
+				for (int i = 0; i != 4; i++)
+				{
+					element[i][0] = vec4.element[i];
+					element[i][1] = vec1.element[i];
+					element[i][2] = vec2.element[i];
+					element[i][3] = vec3.element[i];
+				}
+			}
+		}
+
 		Matrix<rows, cols, T>& operator=(const Matrix<rows, cols, T>& mat)
 		{
 			for (int itr1 = 0; itr1 != rows; itr1++)
@@ -263,6 +312,12 @@ namespace Mathmatic
 			}
 			return *this;
 		}
+
+		Matrix<rows, cols, T>& operator=(const T* mat)
+		{
+			memcpy(element, mat, sizeof(T) * rows * cols);
+			return *this;
+		 }
 
 		Vector<rows, T> GetCol(int getcols) const
 		{
@@ -336,14 +391,14 @@ namespace Mathmatic
 	}
 
 	template<template<int, int, typename> class TT = Matrix, int rows, int cols, typename T>
-	Vector<cols, T> MatrixMultiVector(const Vector<rows, T> vec, const Matrix<rows, cols, T>& mat)
+	void VectorMultiMatrix(Vector<rows, T>& vec, const Matrix<rows, cols, T>& mat)
 	{
 		Vector<cols, T> result;
 		for (int itr = 0; itr != cols; itr++)
 		{
 			result.element[itr] = DotProduct(vec, mat.GetCol(itr));
 		}
-		return result;
+		vec = result;
 	}
 
 	template<template<int, int, typename> class TT = Matrix, int rows, int cols, typename T>
@@ -454,10 +509,15 @@ namespace Mathmatic
 	}
 
 	template<template<int, int, typename> class TT = Matrix, int rows, int cols, typename T>
-	Vector<cols, T> LinearTransform(const Vector<rows, T> vec, const Matrix<rows, cols, T>& mat)
+	void LinearTransform(Vector<rows, T>* vec, size_t size, const Matrix<rows, cols, T>& mat)
 	{
-		Vector<cols,T> result = MatrixMultiVector(vec, mat);
-		return result;
+		if (rows == rows)
+		{
+			Vector<rows, T> result;
+			for (int i = 0; i != size; i++)
+				VectorMultiMatrix(*(vec + i), mat);
+		}
+		//return result;
 	}
 
 	template<template<int, int, typename> class TT = Matrix>
@@ -570,7 +630,7 @@ namespace Mathmatic
 		 1.0f / (aspectRatio * tanf(angleAxisY * 0.5f)), 0.0f, 0.0f, 0.0f ,
 		 0.0f, 1.0f / tanf(angleAxisY * 0.5f), 0.0f, 0.0f ,
 		 0.0f, 0.0f, FarPlane / (FarPlane - nearPlane), 1.0f ,
-		 0.0f, 0.0f, (-nearPlane * FarPlane) / (FarPlane - nearPlane), 0.0f };
+		 0.0f, 0.0f, ((0.f - nearPlane) * FarPlane) / (FarPlane - nearPlane), 0.0f };
 		return perspectiveMatrix;
 	}
 }

@@ -973,6 +973,40 @@ const ObjectStructure *GeometryNodeStructure::GetObjectStructure(void) const
 	return (geometryObjectStructure);
 }
 
+auto GeometryNodeStructure::GetMaterialStructureArray(void) const->decltype(materialStructureArray)
+{
+	return(materialStructureArray);
+}
+
+bool GeometryNodeStructure::GetVisibleFlag(void) const
+{
+	if (visibleFlag[0]) {
+		return visibleFlag[1];
+	}
+	else {
+		return geometryObjectStructure->GetVisibleFlag();
+	}
+}
+
+bool GeometryNodeStructure::GetShadowFlag(void) const
+{
+	if (shadowFlag[0]) {
+		return shadowFlag[1];
+	}
+	else {
+		return geometryObjectStructure->GetShadowFlag();
+	}
+}
+
+bool GeometryNodeStructure::GetMotionBlurFlag(void) const
+{
+	if (motionBlurFlag[0]) {
+		return motionBlurFlag[1];
+	}
+	else {
+		return geometryObjectStructure->GetMotionBlurFlag();
+	}
+}
 
 LightNodeStructure::LightNodeStructure() : NodeStructure(kStructureLightNode)
 {
@@ -3368,7 +3402,7 @@ Structure *OpenGexDataDescription::CreateStructure(const String& identifier) con
 
 	if (identifier == "Transform")
 	{
-		return (new TransformStructure);
+ 		return (new TransformStructure);
 	}
 
 	if (identifier == "Translation")
@@ -3574,43 +3608,43 @@ DataResult OpenGexDataDescription::ProcessData(void)
 }
 
 
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR commandLine, int cmdShow)
-{
-	// Import the file "Code/Example.ogex".
-
-	HANDLE handle = CreateFile("Code\\Example.ogex", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (handle != INVALID_HANDLE_VALUE)
-	{
-		OpenGexDataDescription	openGexDataDescription;
-		DWORD					actual;
-
-		DWORD size = GetFileSize(handle, nullptr);
-		char *buffer = new char[size + 1];
-
-		// Read the entire contents of the file and put a zero terminator at the end.
-
-		ReadFile(handle, buffer, size, &actual, nullptr);
-		buffer[size] = 0;
-
-		// Once the file is in memory, the DataDescription::ProcessText() function
-		// is called to create the structure tree and process the data.
-
-		DataResult result = openGexDataDescription.ProcessText(buffer);
-		if (result == kDataOkay)
-		{
-			const Structure *structure = openGexDataDescription.GetRootStructure()->GetFirstSubnode();
-			while (structure)
-			{
-				// This loops over all top-level structures in the file.
-
-				// Do something with the data...
-
-				structure = structure->Next();
-			}
-		}
-
-		delete[] buffer;
-	}
-
-	return (0);
-}
+//int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR commandLine, int cmdShow)
+//{
+//	// Import the file "Code/Example.ogex".
+//
+//	HANDLE handle = CreateFile("Code\\Example.ogex", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+//	if (handle != INVALID_HANDLE_VALUE)
+//	{
+//		OpenGexDataDescription	openGexDataDescription;
+//		DWORD					actual;
+//
+//		DWORD size = GetFileSize(handle, nullptr);
+//		char *buffer = new char[size + 1];
+//
+//		// Read the entire contents of the file and put a zero terminator at the end.
+//
+//		ReadFile(handle, buffer, size, &actual, nullptr);
+//		buffer[size] = 0;
+//
+//		// Once the file is in memory, the DataDescription::ProcessText() function
+//		// is called to create the structure tree and process the data.
+//
+//		DataResult result = openGexDataDescription.ProcessText(buffer);
+//		if (result == kDataOkay)
+//		{
+//			const Structure *structure = openGexDataDescription.GetRootStructure()->GetFirstSubnode();
+//			while (structure)
+//			{
+//				// This loops over all top-level structures in the file.
+//
+//				// Do something with the data...
+//
+//				structure = structure->Next();
+//			}
+//		}
+//
+//		delete[] buffer;
+//	}
+//
+//	return (0);
+//}
