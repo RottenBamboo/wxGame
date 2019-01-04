@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+/wxGame/bin
+/wxGame/x64
+/wxGame/.vs
+/wxAsset
+wxGame/OpenGex-Import/OpenDDL/Debug
+wxGame/OpenGex-Import/OpenGEX/Debug

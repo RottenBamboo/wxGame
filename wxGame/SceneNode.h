@@ -74,6 +74,7 @@ namespace wxGame
 		bool m_bShadow;
 		bool m_bMotionBlur;
 		std::vector<SceneObjectMaterial*> m_Materials;
+		std::string m_GeometryObjs;
 	protected:
 		virtual void dump(std::ostream& out)
 		{
@@ -96,6 +97,8 @@ namespace wxGame
 		const bool MotionBlur() { return m_bMotionBlur; }
 		using SceneNode::AddSceneObjectRef;
 		void AddSceneObjectRef(SceneObjectMaterial* const &object) { m_Materials.push_back(object); }
+		void AddGeometryObjectRef(const char* object) { m_GeometryObjs = object; }
+		std::string GetGeometryObjectRef() { return m_GeometryObjs; }
 	};
 
 	class SceneLightNode :public SceneNode<SceneObjectLight>

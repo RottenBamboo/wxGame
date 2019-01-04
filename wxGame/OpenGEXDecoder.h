@@ -46,6 +46,12 @@ namespace wxGame {
 					_key = material->GetStructureName();
 					_node->AddSceneObjectRef(dynamic_cast<SceneObjectMaterial*>(m_SceneObjects[_key]));
 				}
+				auto geometryObjects = _structure.GetObjectStructure();
+				if (geometryObjects)
+				{
+					const char* name = geometryObjects->GetStructureName();
+					_node->AddGeometryObjectRef(name);
+				}
 				std::string name = _structure.GetNodeName();
 				scene.LUT_Name_GeometryNode.emplace(_key, _node);
 				scene.GeometryNodes.emplace(_key, _node);

@@ -12,7 +12,7 @@
 #include "stdafx.h"
 #include "wxGraphicD3D12.h"
 #include "SceneManager.h"
-
+#define ASSET_DIRECTORY	"../wxAsset/"
 wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	GraphicD3D12(width, height, name),
 	m_frameIndex(0),
@@ -153,21 +153,29 @@ void wxGraphicD3D12::LoadPipeline()
 void wxGraphicD3D12::LoadAssets()
 {
 	//FileLoader fileLoader;
-	BMPDecoder bmpDecoder;
-	DataBuffer dataBuffer;
-	ImageCommon imgCommon;
+	//BMPDecoder bmpDecoder;
+	//DataBuffer dataBuffer;
+	//ImageCommon imgCommon;
 	HRESULT hr;
+
+	/*std::vector<std::string> vec_AssetFileTitle;
+	fileLoader.GetTitleBySuffix(vec_AssetFileTitle, ASSET_DIRECTORY, MATCH_OGEX, SUFFIX_OGEX);
+	for (auto it : vec_AssetFileTitle)
+	{
+		std::vector<std::string> vec_TextureTitle;
+		fileLoader.GetNameByNameAndSuffix(vec_TextureTitle, ASSET_DIRECTORY, MATCH_TEXTURE, SUFFIX_BMP, it);
+	}*/
 #ifdef _X86
 	//FileLoader::FileInfo fileVS = fileLoader.LoadBinary("../Debug/wxVS.cso"); //"../Debug/wxVS.cso"
 	//FileLoader::FileInfo filePS = fileLoader.LoadBinary("../Debug/wxPS.cso"); //"../Debug/wxPS.cso"
-	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/artemis_-_CleanUp_-_LowPoly_u1_v1.bmp");
-	imgCommon = bmpDecoder.BMPParser(dataBuffer);
+	//dataBuffer = bmpDecoder.BMPLoader("../wxAsset/goddess artemis_texture_1.bmp");
+	//imgCommon = bmpDecoder.BMPParser(dataBuffer);
 
 #else
 	//FileLoader::FileInfo fileVS = fileLoader.LoadBinary("../x64/Debug/wxVS.cso"); //"../Debug/wxVS.cso"
 	//FileLoader::FileInfo filePS = fileLoader.LoadBinary("../x64/Debug/wxPS.cso"); //"../Debug/wxPS.cso"
-	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/artemis_-_CleanUp_-_LowPoly_u1_v1.bmp");
-	imgCommon = bmpDecoder.BMPParser(dataBuffer);
+	//dataBuffer = bmpDecoder.BMPLoader("../wxAsset/goddess artemis_texture_1.bmp");
+	//imgCommon = bmpDecoder.BMPParser(dataBuffer);
 #endif
 
 	// Create the root signature.
@@ -286,8 +294,6 @@ void wxGraphicD3D12::LoadAssets()
 	// Create the command list.
 	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
 
-	//LoadDefaultVertexIndexData();
-
 	LoadVertexIndexDataFromFile();
 
 	//resource Description for depth stencil buffer
@@ -316,67 +322,106 @@ void wxGraphicD3D12::LoadAssets()
 	depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
 	depthOptimizedClearValue.DepthStencil.Stencil = 0;
 
-	 m_device->CreateCommittedResource(&dsHeapProperties, D3D12_HEAP_FLAG_NONE, &depthStencilDesc, \
+	m_device->CreateCommittedResource(&dsHeapProperties, D3D12_HEAP_FLAG_NONE, &depthStencilDesc, \
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, __uuidof(m_depthStencil), (void**)&m_depthStencil);
 
-	 // Create the depth stencil view.
-	 D3D12_DEPTH_STENCIL_VIEW_DESC dsvBufferDesc = {};
-	 dsvBufferDesc.Format = DXGI_FORMAT_D32_FLOAT;
-	 dsvBufferDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	 dsvBufferDesc.Flags = D3D12_DSV_FLAG_NONE;
-	 // Create DepthStencilView
-	 m_device->CreateDepthStencilView(m_depthStencil.Get(), &dsvBufferDesc, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+	// Create the depth stencil view.
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvBufferDesc = {};
+	dsvBufferDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	dsvBufferDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	dsvBufferDesc.Flags = D3D12_DSV_FLAG_NONE;
+	// Create DepthStencilView
+	m_device->CreateDepthStencilView(m_depthStencil.Get(), &dsvBufferDesc, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 
+	// Create CBV resource and bind it to the pipeline by ConstantBufferView.
+	//resource Description for constant buffer
 
+	D3D12_HEAP_PROPERTIES cbvHeapProperties;
+	cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+	cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	cbvHeapProperties.CreationNodeMask = 1;
+	cbvHeapProperties.VisibleNodeMask = 1;
 
-	 // Create CBV resource and bind it to the pipeline by ConstantBufferView.
-	 //resource Description for constant buffer
+	D3D12_RESOURCE_DESC constantBufferDesc;
+	constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	constantBufferDesc.Alignment = 0;
+	constantBufferDesc.Width = sizeof(constBuffer);
+	constantBufferDesc.Height = 1;
+	constantBufferDesc.DepthOrArraySize = 1;
+	constantBufferDesc.MipLevels = 1;
+	constantBufferDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
+	constantBufferDesc.SampleDesc.Count = 1;
+	constantBufferDesc.SampleDesc.Quality = 0;
+	constantBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	constantBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	 D3D12_HEAP_PROPERTIES cbvHeapProperties;
-	 cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-	 cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	 cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	 cbvHeapProperties.CreationNodeMask = 1;
-	 cbvHeapProperties.VisibleNodeMask = 1;
+	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantBufferDesc, \
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_constantBuffer), (void**)&m_constantBuffer);
 
-	 D3D12_RESOURCE_DESC constantBufferDesc;
-	 constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	 constantBufferDesc.Alignment = 0;
-	 constantBufferDesc.Width = sizeof(constBuffer);
-	 constantBufferDesc.Height = 1;
-	 constantBufferDesc.DepthOrArraySize = 1;
-	 constantBufferDesc.MipLevels = 1;
-	 constantBufferDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
-	 constantBufferDesc.SampleDesc.Count = 1;
-	 constantBufferDesc.SampleDesc.Quality = 0;
-	 constantBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	 constantBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	// Map the constant buffers. Note that unlike D3D11, the resource 
+	// does not need to be unmapped for use by the GPU. In this sample, 
+	// the resource stays 'permenantly' mapped to avoid overhead with 
+	// mapping/unmapping each frame.
+	D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
+	m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
+	//memcpy(m_pCBDataBegin, &constBuff, sizeof(constBuffer));
 
-	 hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantBufferDesc, \
-		 D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_constantBuffer), (void**)&m_constantBuffer);
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	int cbvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	cbvHandle.ptr += cbvDescriptorSize;
 
-	 // Map the constant buffers. Note that unlike D3D11, the resource 
-	 // does not need to be unmapped for use by the GPU. In this sample, 
-	 // the resource stays 'permenantly' mapped to avoid overhead with 
-	 // mapping/unmapping each frame.
-	 D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
-	 m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
-	 memcpy(m_pCBDataBegin, &constBuff, sizeof(constBuffer));
-
-	 D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	 int cbvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	 cbvHandle.ptr += cbvDescriptorSize;
-
-	 D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
-	 constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
-	 constantBufferView.SizeInBytes = sizeof(constBuffer);
-	 m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);
+	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
+	constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
+	constantBufferView.SizeInBytes = sizeof(constBuffer);
+	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);
 
 	// Note: ComPtr's are CPU objects but this resource needs to stay in scope until
 	// the command list that references it has finished executing on the GPU.
 	// We will flush the GPU at the end of this method to ensure the resource is not
 	// prematurely destroyed.
-	ComPtr<ID3D12Resource> textureUploadHeap;
+
+	CreateTexture();
+
+	// Close the command list and execute it to begin the initial GPU setup.
+	ThrowIfFailed(m_commandList->Close());
+	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+	// Create synchronization objects and wait until assets have been uploaded to the GPU.
+	{
+		ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+		m_fenceValue = 1;
+
+		// Create an event handle to use for frame synchronization.
+		m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		if (m_fenceEvent == nullptr)
+		{
+			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
+		}
+
+		// Wait for the command list to execute; we are reusing the same command 
+		// list in our main loop but for now, we just want to wait for setup to 
+		// complete before continuing.
+		WaitForPreviousFrame();
+	}
+}
+
+void wxGraphicD3D12::CreateTexture()
+{
+	BMPDecoder bmpDecoder;
+	DataBuffer dataBuffer;
+	ImageCommon imgCommon;
+	HRESULT hr;
+	//ID3D12Resource* texture;
+#ifdef _X86
+	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/goddess artemis_texture_1.bmp");
+	imgCommon = bmpDecoder.BMPParser(dataBuffer);
+
+#else
+	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/goddess artemis_texture_1.bmp");
+	imgCommon = bmpDecoder.BMPParser(dataBuffer);
+#endif
 
 	// Create the texture.
 	{
@@ -409,18 +454,10 @@ void wxGraphicD3D12::LoadAssets()
 			&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&textureUploadHeap));
+			IID_PPV_ARGS(&m_textureUploadHeap));
 
 		// Copy data to the intermediate upload heap and then schedule a copy 
 		// from the upload heap to the Texture2D.
-		/*std::vector<UINT8> texture = GenerateTextureData();
-
-		D3D12_SUBRESOURCE_DATA textureData = {};
-		textureData.pData = &texture[0];
-		textureData.RowPitch = TextureWidth * TexturePixelSize;
-		textureData.SlicePitch = textureData.RowPitch * TextureHeight;
-
-		UpdateSubresources(m_commandList.Get(), m_texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &textureData);*/
 
 		D3D12_SUBRESOURCE_DATA srvSubrecData = {};
 		if (imgCommon.imBitCount == 24)
@@ -447,16 +484,12 @@ void wxGraphicD3D12::LoadAssets()
 			imgCommon.imDataSize = data_size;
 			imgCommon.imPitch = new_pitch;
 		}
-		else if (imgCommon.imBitCount == 32)
-		{
-
-		}
 		int sizeData = sizeof(imgCommon.imData);
 		srvSubrecData.pData = imgCommon.imData;
 		srvSubrecData.RowPitch = imgCommon.imPitch;
 		srvSubrecData.SlicePitch = imgCommon.imPitch * imgCommon.imHeight;
 
-		UpdateSubresources(m_commandList.Get(), m_texture.Get(), textureUploadHeap.Get(), 0, 0, 1, &srvSubrecData);
+		UpdateSubresources(m_commandList.Get(), m_texture.Get(), m_textureUploadHeap.Get(), 0, 0, 1, &srvSubrecData);
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 		// Describe and create a SRV for the texture.
@@ -470,66 +503,6 @@ void wxGraphicD3D12::LoadAssets()
 		delete[] imgCommon.imData;
 		imgCommon.imData = nullptr;
 	}
-	
-	// Close the command list and execute it to begin the initial GPU setup.
-	ThrowIfFailed(m_commandList->Close());
-	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
-	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-
-	// Create synchronization objects and wait until assets have been uploaded to the GPU.
-	{
-		ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
-		m_fenceValue = 1;
-
-		// Create an event handle to use for frame synchronization.
-		m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-		if (m_fenceEvent == nullptr)
-		{
-			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
-		}
-
-		// Wait for the command list to execute; we are reusing the same command 
-		// list in our main loop but for now, we just want to wait for setup to 
-		// complete before continuing.
-		WaitForPreviousFrame();
-	}
-}
-
-// Generate a simple black and white checkerboard texture.
-std::vector<UINT8> wxGraphicD3D12::GenerateTextureData()
-{
-	const UINT rowPitch = TextureWidth * TexturePixelSize;
-	const UINT cellPitch = rowPitch >> 3;		// The width of a cell in the checkboard texture.
-	const UINT cellHeight = TextureWidth >> 3;	// The height of a cell in the checkerboard texture.
-	const UINT textureSize = rowPitch * TextureHeight;
-
-	std::vector<UINT8> data(textureSize);
-	UINT8* pData = &data[0];
-
-	for (UINT n = 0; n < textureSize; n += TexturePixelSize)
-	{
-		UINT x = n % rowPitch;
-		UINT y = n / rowPitch;
-		UINT i = x / cellPitch;
-		UINT j = y / cellHeight;
-
-		if (i % 2 == j % 2)
-		{
-			pData[n] = 0x00;		// R
-			pData[n + 1] = 0x00;	// G
-			pData[n + 2] = 0x00;	// B
-			pData[n + 3] = 0xff;	// A
-		}
-		else
-		{
-			pData[n] = 0xff;		// R
-			pData[n + 1] = 0xff;	// G
-			pData[n + 2] = 0xff;	// B
-			pData[n + 3] = 0xff;	// A
-		}
-	}
-
-	return data;
 }
 
 // Update frame-based values.
@@ -550,7 +523,6 @@ void wxGraphicD3D12::OnRender()
 
 	// Present the frame.
 	ThrowIfFailed(m_swapChain->Present(1, 0));
-
 	WaitForPreviousFrame();
 }
 
@@ -603,10 +575,12 @@ void wxGraphicD3D12::PopulateCommandList()
 	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	m_commandList->IASetIndexBuffer(&m_indexBufferView);
-	m_commandList->DrawIndexedInstanced(m_numIndices, 1, 0, 0, 0);
-	//m_commandList->DrawInstanced(6, 1, 0, 0);
+	for (int i = 0; i < m_vec_VertexBufferView.size(); i++)
+	{
+		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_VertexBufferView[i]));
+		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
+		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
+	}
 
 	// Indicate that the back buffer will now be used to present.
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
@@ -645,11 +619,11 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	}
 	int k = static_cast<int>(angleAxisY) / 360;
 	angleAxisY = angleAxisY + k * 360;
-	constBuffer matResult;
-	matResult.rotatYMatrix = MatrixRotationY(angleAxisY);
-	matResult.viewMatrix = BuildViewMatrix({ 0,-2,-50.f }, { 0,0,0.f }, { 0.f,1.f,0.f });
-	matResult.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 100.0f);
-	memcpy(m_pCBDataBegin, &matResult, sizeof(constBuffer));
+	//constBuffer matResult;
+	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
+	constBuff.viewMatrix = BuildViewMatrix({ 0,-2,-50.f }, { 0,0,0.f }, { 0.f,1.f,0.f });
+	constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 100.0f);
+	memcpy(m_pCBDataBegin, &constBuff, sizeof(constBuffer));
 }
 
 void wxGraphicD3D12::LoadVertexIndexDataFromFile()
@@ -658,57 +632,71 @@ void wxGraphicD3D12::LoadVertexIndexDataFromFile()
 	g_pSceneManager->LoadScene(path.c_str());
 	Scene scene = g_pSceneManager->GetSceneForRendering();
 	if (!scene.Geometries.empty())
+	for (auto& _it : scene.GeometryNodes)
 	{
-		for (const auto& _it : scene.Geometries)
+		SceneGeometryNode* geoNode = _it.second;
+		if (geoNode)
 		{
-			const auto& pGeometryObject = _it.second;
-			SceneObjectMesh* pMesh = pGeometryObject->GetMesh();
-			size_t elementCount = pMesh->GetVertexCount();
-			Vertex* vertexMix = new Vertex[elementCount];
-			for (uint32_t i = 0; i < pMesh->GetVertexPropertiesCount(); i++)
+			std::string GeometryObjName = geoNode->GetGeometryObjectRef();
+			if (GeometryObjName != "")
 			{
-				const SceneObjectVertexArray& v_property_array = pMesh->GetVertexPropertyArray(i);
-				if (v_property_array.GetAttribute() == "position")
+				const auto& _it = scene.Geometries.find(GeometryObjName);
+				if (_it != scene.Geometries.end())
 				{
-					float* pPosition = (float*)v_property_array.GetData();
-					v_property_array.GetDataSize();
-					for (uint32_t i = 0; i < v_property_array.GetElementCount(); i = i + 3)
+					const auto& pGeometryObject = _it->second;
+					SceneObjectMesh* pMesh = pGeometryObject->GetMesh();
+					size_t elementCount = pMesh->GetVertexCount();
+					Vertex* vertexMix = new Vertex[elementCount];
+					for (uint32_t i = 0; i < pMesh->GetVertexPropertiesCount(); i++)
 					{
-						size_t label = i / 3;
-						vertexMix[label].position.x = pPosition[i];
-						vertexMix[label].position.y = pPosition[i + 1];
-						vertexMix[label].position.z = pPosition[i + 2];
-						vertexMix[label].position.w = 1.f;
+						const SceneObjectVertexArray& v_property_array = pMesh->GetVertexPropertyArray(i);
+						size_t length = v_property_array.GetElementCount();
+						if (v_property_array.GetAttribute() == "position")
+						{
+							float* pPosition = (float*)v_property_array.GetData();
+							for (uint32_t i = 0; i < length; i = i + 3)
+							{
+								size_t label = i / 3;
+								vertexMix[label].position.element[0] = pPosition[i];
+								vertexMix[label].position.element[1] = pPosition[i + 1];
+								vertexMix[label].position.element[2] = pPosition[i + 2];
+								vertexMix[label].position.element[3] = 1.f;
+							}
+						}
+						if (v_property_array.GetAttribute() == "texcoord")
+						{
+							float* pTexcoord = (float*)v_property_array.GetData();
+							for (uint32_t i = 0; i < length; i = i + 2)
+							{
+								size_t label = i / 2;
+								vertexMix[label].uv.element[0] = pTexcoord[i];
+								vertexMix[label].uv.element[1] = pTexcoord[i + 1];
+							}
+						}
 					}
-				}
-				if (v_property_array.GetAttribute() == "texcoord")
-				{
-					float* pTexcoord = (float*)v_property_array.GetData();
-					v_property_array.GetDataSize();
-					for (uint32_t i = 0; i < v_property_array.GetElementCount(); i = i + 2)
+					SceneObjectTransform* transform = geoNode->GetTransform(0);
+					constBuff.linearTransMatrix = *(transform->GetTransformMatrix());
+					
+					CreateVertexBuffer(*vertexMix, elementCount);
+					delete[] vertexMix;
+					const auto indexCount = pMesh->GetIndexCount();
+					int* Indice = new int[indexCount];
+					for (uint32_t i = 0; i < pMesh->GetIndexGroupCount(); i++)
 					{
-						size_t label = i / 2;
-						vertexMix[label].uv.x = pTexcoord[i];
-						vertexMix[label].uv.y = pTexcoord[i + 1];
+						const SceneObjectIndexArray& v_index_array = pMesh->GetIndexArray(i);
+						int* pPosition = (int*)v_index_array.GetData();
+						for (size_t i = 0; i < indexCount; i++)
+						{
+							Indice[i] = pPosition[i];
+						}
 					}
+					CreateIndexBuffer(*Indice, indexCount);
+					m_vec_numIndices.push_back(indexCount);
+					delete[] Indice;
 				}
 			}
-			CreateVertexBuffer(*vertexMix, elementCount);
-			const auto indexCount = pMesh->GetIndexCount();
-			int* Indice = new int[indexCount];
-			for (uint32_t i = 0; i < pMesh->GetIndexGroupCount(); i++)
-			{
-				const SceneObjectIndexArray& v_index_array = pMesh->GetIndexArray(i);
-				int* pPosition = (int*)v_index_array.GetData();
-				for (size_t i = 0 ; i < indexCount;i++)
-				{
-					Indice[i] = pPosition[i];
-				}
-			}
-			CreateIndexBuffer(*Indice, indexCount);
-			m_numIndices = indexCount;
 		}
-	}	
+	}
 }	
 
 void wxGraphicD3D12::LoadDefaultVertexIndexData()
@@ -810,7 +798,7 @@ void wxGraphicD3D12::LoadDefaultVertexIndexData()
 void wxGraphicD3D12::CreateVertexBuffer(Vertex& vertex, size_t size)
 {
 	const UINT vertexBufferSize = sizeof(vertex) * size;
-
+	ID3D12Resource* pVertexBuffer;
 	// Note: using upload heaps to transfer static data like vert buffers is not 
 	// recommended. Every time the GPU needs it, the upload heap will be marshalled 
 	// over. Please read up on Default Heap usage. An upload heap is used here for 
@@ -821,51 +809,20 @@ void wxGraphicD3D12::CreateVertexBuffer(Vertex& vertex, size_t size)
 		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(&m_vertexBuffer)));
-	Scene scene = g_pSceneManager->GetSceneForRendering(); 
-	std::unordered_multimap < std::string, SceneGeometryNode*>::iterator itr = (scene.GeometryNodes).begin(); 
-	itr;
-	SceneGeometryNode* SGN = itr->second;
-	SceneObjectTransform* transform = SGN->GetTransform(0);
-	if (transform) 
-	{
-		const Matrix4X4FT* p_transform = transform->GetTransformMatrix();
-		if (p_transform)
-		{
-			Vector4FT* vec_vertex = new Vector4FT[size];
-			for (int i = 0; i != size; i++)
-			{
-				vec_vertex[i].element[0] = (&vertex)[i].position.x;
-				vec_vertex[i].element[1] = (&vertex)[i].position.y;
-				vec_vertex[i].element[2] = (&vertex)[i].position.z;
-				vec_vertex[i].element[3] = (&vertex)[i].position.w;
-
-			}
-			LinearTransform(vec_vertex, size, *p_transform);
-
-			for (int i = 0; i != size; i++)
-			{
-				(&vertex)[i].position.x = vec_vertex[i].element[0];
-				(&vertex)[i].position.y = vec_vertex[i].element[1];
-				(&vertex)[i].position.z = vec_vertex[i].element[2];
-				(&vertex)[i].position.w = vec_vertex[i].element[3];
-			}
-			delete[] vec_vertex;
-			vec_vertex = nullptr;
-		}
-	}
+		IID_PPV_ARGS(&pVertexBuffer)));
 	
 	// Copy the triangle data to the vertex buffer.
 	UINT8* pVertexDataBegin;
 	CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
-	ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+	ThrowIfFailed(pVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
 	memcpy(pVertexDataBegin, &vertex, vertexBufferSize);
-	m_vertexBuffer->Unmap(0, nullptr);
-	Vertex vvv;
+	pVertexBuffer->Unmap(0, nullptr);
+
 	// Initialize the vertex buffer view.
-	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+	m_vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
 	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
 	m_vertexBufferView.SizeInBytes = vertexBufferSize;
+	m_vec_VertexBufferView.push_back(m_vertexBufferView);
 }
 
 void wxGraphicD3D12::CreateIndexBuffer(int& indice, size_t size)
@@ -892,19 +849,21 @@ void wxGraphicD3D12::CreateIndexBuffer(int& indice, size_t size)
 	indexBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	indexBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
+	ID3D12Resource* indexBuffer;
 	indexHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 	hr = m_device->CreateCommittedResource(&indexHeapProperties, D3D12_HEAP_FLAG_NONE, \
-		&indexBufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_indexBuffer), (void**)&m_indexBuffer);
+		&indexBufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(indexBuffer), (void**)&indexBuffer);
 
 	void* pIndexDataBegin;
 	D3D12_RANGE readRange1 = { 0,0 };
-	m_indexBuffer->Map(0, &readRange1, &pIndexDataBegin);
+	indexBuffer->Map(0, &readRange1, &pIndexDataBegin);
 	memcpy(pIndexDataBegin, &indice, sizeof(indice) * size);
-	m_indexBuffer->Unmap(0, nullptr);
+	indexBuffer->Unmap(0, nullptr);
 
-	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+	m_indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 	m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	m_indexBufferView.SizeInBytes = sizeof(indice) * size;
+	m_vec_IndexBufferView.push_back(m_indexBufferView);
 }
 
 void wxGraphicD3D12::LoadSceneNode(const BaseSceneNode& baseSceneNode)

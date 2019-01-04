@@ -49,26 +49,25 @@ namespace wxGame {
 
 		struct Vertex
 		{
-			XMFLOAT4 position;
-			XMFLOAT2 uv;
+			Vector4FT position;
+			Vector2FT uv;
 		};
 
 		struct constBuffer
 		{
-			Matrix4X4FT rotatYMatrix;
+			Matrix4X4FT linearTransMatrix;
 			Matrix4X4FT viewMatrix;
 			Matrix4X4FT perspectiveMatrix;
-			Matrix4X4FT wvpMatrix;
+			Matrix4X4FT rotatMatrix;
 
 			constBuffer()// :rotatYMatrix(0),projMatrix(0),perspectiveMatrix(0), lightMaitrx(0)
 			{
-				MatrixIdentity(rotatYMatrix);
+				MatrixIdentity(linearTransMatrix);
 				MatrixIdentity(viewMatrix);
 				MatrixIdentity(perspectiveMatrix);
-				MatrixIdentity(wvpMatrix);
+				MatrixIdentity(rotatMatrix);
 			}
 		};
-
 
 		void* m_pCBDataBegin;			//constant buffer data pointer
 		constBuffer constBuff;
@@ -76,12 +75,13 @@ namespace wxGame {
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
 		CD3DX12_RECT m_scissorRect;
-		ComPtr<IDXGISwapChain3> m_swapChain;
+		ComPtr<IDXGISwapChain3> m_swapChain;ComPtr<ID3D12Resource> textureUploadHeap;
 		ComPtr<ID3D12Device> m_device;
 		ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 		ComPtr<ID3D12Resource> m_depthStencil;
 		ComPtr<ID3D12Resource> m_constantBuffer;
 		ComPtr<ID3D12Resource> m_indexBuffer;
+		ComPtr<ID3D12Resource> m_textureUploadHeap;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 		ComPtr<ID3D12CommandQueue> m_commandQueue;
 		ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -95,12 +95,15 @@ namespace wxGame {
 		// App resources.
 		ComPtr<ID3D12Resource> m_vertexBuffer;
 		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_VertexBufferView;
 		D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_IndexBufferView;
 		ComPtr<ID3D12Resource> m_texture;
 
 		unsigned int m_numIndices;
+		std::vector<unsigned int> m_vec_numIndices;
 		float angleAxisY;
-
+		D3D12_SHADER_RESOURCE_VIEW_DESC srv;
 		// Synchronization objects.
 		UINT m_frameIndex;
 		HANDLE m_fenceEvent;
@@ -109,6 +112,7 @@ namespace wxGame {
 
 		void LoadPipeline();
 		void LoadAssets();
+		void CreateTexture();
 		void LoadVertexIndexDataFromFile();
 		void LoadDefaultVertexIndexData();
 		void CreateVertexBuffer(Vertex&, size_t);
