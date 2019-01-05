@@ -107,6 +107,8 @@ void wxGraphicD3D12::LoadPipeline()
 	ThrowIfFailed(swapChain.As(&m_swapChain));
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
+	RetrievalAssetDirectory();
+
 	// Create descriptor heaps.
 	{
 		// Describe and create a depth stencil view (DSV) descriptor heap.
@@ -125,7 +127,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = 2;
+		srvHeapDesc.NumDescriptors = m_vec_TextureTitle.size() + 1;
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -149,35 +151,20 @@ void wxGraphicD3D12::LoadPipeline()
 	ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
 }
 
+void wxGraphicD3D12::RetrievalAssetDirectory()
+{
+	FileLoader fileLoader;
+	//get .ogex file title then get associated texture name from these .ogex title
+	fileLoader.GetTitleBySuffix(m_vec_AssetFileTitle, ASSET_DIRECTORY, MATCH_OGEX, SUFFIX_OGEX);
+	for (auto it : m_vec_AssetFileTitle)
+	{
+		fileLoader.GetNameByNameAndSuffix(m_vec_TextureTitle, ASSET_DIRECTORY, MATCH_TEXTURE, SUFFIX_BMP, it);
+	}
+}
 // Load the sample assets.
 void wxGraphicD3D12::LoadAssets()
 {
-	//FileLoader fileLoader;
-	//BMPDecoder bmpDecoder;
-	//DataBuffer dataBuffer;
-	//ImageCommon imgCommon;
 	HRESULT hr;
-
-	/*std::vector<std::string> vec_AssetFileTitle;
-	fileLoader.GetTitleBySuffix(vec_AssetFileTitle, ASSET_DIRECTORY, MATCH_OGEX, SUFFIX_OGEX);
-	for (auto it : vec_AssetFileTitle)
-	{
-		std::vector<std::string> vec_TextureTitle;
-		fileLoader.GetNameByNameAndSuffix(vec_TextureTitle, ASSET_DIRECTORY, MATCH_TEXTURE, SUFFIX_BMP, it);
-	}*/
-#ifdef _X86
-	//FileLoader::FileInfo fileVS = fileLoader.LoadBinary("../Debug/wxVS.cso"); //"../Debug/wxVS.cso"
-	//FileLoader::FileInfo filePS = fileLoader.LoadBinary("../Debug/wxPS.cso"); //"../Debug/wxPS.cso"
-	//dataBuffer = bmpDecoder.BMPLoader("../wxAsset/goddess artemis_texture_1.bmp");
-	//imgCommon = bmpDecoder.BMPParser(dataBuffer);
-
-#else
-	//FileLoader::FileInfo fileVS = fileLoader.LoadBinary("../x64/Debug/wxVS.cso"); //"../Debug/wxVS.cso"
-	//FileLoader::FileInfo filePS = fileLoader.LoadBinary("../x64/Debug/wxPS.cso"); //"../Debug/wxPS.cso"
-	//dataBuffer = bmpDecoder.BMPLoader("../wxAsset/goddess artemis_texture_1.bmp");
-	//imgCommon = bmpDecoder.BMPParser(dataBuffer);
-#endif
-
 	// Create the root signature.
 	{
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
@@ -294,8 +281,11 @@ void wxGraphicD3D12::LoadAssets()
 	// Create the command list.
 	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
 
-	LoadVertexIndexDataFromFile();
+	m_TypedDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+	LoadVertexIndexDataFromFile(m_vec_AssetFileTitle);
+	CreateTexture(m_vec_TextureTitle);
+	
 	//resource Description for depth stencil buffer
 	D3D12_HEAP_PROPERTIES dsHeapProperties;
 	dsHeapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -365,11 +355,9 @@ void wxGraphicD3D12::LoadAssets()
 	// mapping/unmapping each frame.
 	D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
 	m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
-	//memcpy(m_pCBDataBegin, &constBuff, sizeof(constBuffer));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	int cbvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	cbvHandle.ptr += cbvDescriptorSize;
+	cbvHandle.ptr += m_TypedDescriptorSize * m_textureResCount;
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
 	constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
@@ -380,8 +368,6 @@ void wxGraphicD3D12::LoadAssets()
 	// the command list that references it has finished executing on the GPU.
 	// We will flush the GPU at the end of this method to ensure the resource is not
 	// prematurely destroyed.
-
-	CreateTexture();
 
 	// Close the command list and execute it to begin the initial GPU setup.
 	ThrowIfFailed(m_commandList->Close());
@@ -407,101 +393,107 @@ void wxGraphicD3D12::LoadAssets()
 	}
 }
 
-void wxGraphicD3D12::CreateTexture()
+void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 {
 	BMPDecoder bmpDecoder;
 	DataBuffer dataBuffer;
 	ImageCommon imgCommon;
 	HRESULT hr;
-	//ID3D12Resource* texture;
+	m_vec_texture.resize(title.size());
+	m_vec_textureUploadHeap.resize(title.size());
+	for(int i = 0; i!= title.size(); i++)
+	{
 #ifdef _X86
-	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/goddess artemis_texture_1.bmp");
-	imgCommon = bmpDecoder.BMPParser(dataBuffer);
+		dataBuffer = bmpDecoder.BMPLoader((ASSET_DIRECTORY + title[i]).c_str());
+		imgCommon = bmpDecoder.BMPParser(dataBuffer);
 
 #else
-	dataBuffer = bmpDecoder.BMPLoader("../wxAsset/goddess artemis_texture_1.bmp");
-	imgCommon = bmpDecoder.BMPParser(dataBuffer);
+		dataBuffer = bmpDecoder.BMPLoader((ASSET_DIRECTORY + title[i]).c_str());
+		imgCommon = bmpDecoder.BMPParser(dataBuffer);
 #endif
 
-	// Create the texture.
-	{
-		// Describe and create a Texture2D.
-		D3D12_RESOURCE_DESC textureDesc = {};
-		textureDesc.MipLevels = 1;
-		textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		textureDesc.Width = imgCommon.imWidth;
-		textureDesc.Height = imgCommon.imHeight;
-		textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		textureDesc.DepthOrArraySize = 1;
-		textureDesc.SampleDesc.Count = 1;
-		textureDesc.SampleDesc.Quality = 0;
-		textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-
-		hr = m_device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-			D3D12_HEAP_FLAG_NONE,
-			&textureDesc,
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			nullptr,
-			IID_PPV_ARGS(&m_texture));
-
-		const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_texture.Get(), 0, 1);
-
-		// Create the GPU upload buffer.
-		hr = m_device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&m_textureUploadHeap));
-
-		// Copy data to the intermediate upload heap and then schedule a copy 
-		// from the upload heap to the Texture2D.
-
-		D3D12_SUBRESOURCE_DATA srvSubrecData = {};
-		if (imgCommon.imBitCount == 24)
+		// Create the texture.
 		{
-			// DXGI does not have 24bit formats so we have to extend it to 32bit
-			unsigned char new_pitch = imgCommon.imPitch / 3 * 4;
-			size_t data_size = new_pitch * imgCommon.imHeight;
-			DataBuffer* data = new DataBuffer(data_size);
-			unsigned char* buf = reinterpret_cast<unsigned char*>(data->GetData());
-			unsigned char* src = reinterpret_cast<unsigned char*>(imgCommon.imData);
-			for (uint32_t row = 0; row < imgCommon.imHeight; row++)
+			// Describe and create a Texture2D.
+			D3D12_RESOURCE_DESC textureDesc = {};
+			textureDesc.MipLevels = 1;
+			textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			textureDesc.Width = imgCommon.imWidth;
+			textureDesc.Height = imgCommon.imHeight;
+			textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+			textureDesc.DepthOrArraySize = 1;
+			textureDesc.SampleDesc.Count = 1;
+			textureDesc.SampleDesc.Quality = 0;
+			textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+			hr = m_device->CreateCommittedResource(
+				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+				D3D12_HEAP_FLAG_NONE,
+				&textureDesc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				nullptr,
+				IID_PPV_ARGS(&(m_vec_texture[i])));
+
+			const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_vec_texture[i].Get(), 0, 1);
+
+			// Create the GPU upload buffer.
+			hr = m_device->CreateCommittedResource(
+				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+				D3D12_HEAP_FLAG_NONE,
+				&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(&(m_vec_textureUploadHeap[i])));
+
+			// Copy data to the intermediate upload heap and then schedule a copy 
+			// from the upload heap to the Texture2D.
+
+			D3D12_SUBRESOURCE_DATA srvSubrecData = {};
+			if (imgCommon.imBitCount == 24)
 			{
-				buf = reinterpret_cast<unsigned char*>(data->GetData()) + row * new_pitch;
-				src = reinterpret_cast<unsigned char*>(imgCommon.imData) + row * imgCommon.imPitch;
-				for (unsigned char col = 0; col < imgCommon.imWidth; col++)
+				// DXGI does not have 24bit formats so we have to extend it to 32bit
+				unsigned char new_pitch = imgCommon.imPitch / 3 * 4;
+				size_t data_size = new_pitch * imgCommon.imHeight;
+				DataBuffer* data = new DataBuffer(data_size);
+				unsigned char* buf = reinterpret_cast<unsigned char*>(data->GetData());
+				unsigned char* src = reinterpret_cast<unsigned char*>(imgCommon.imData);
+				for (uint32_t row = 0; row < imgCommon.imHeight; row++)
 				{
-					*(unsigned char*)buf = *(unsigned char*)src;
-					buf[3] = 0;  // set alpha to 0
-					buf += 4;
-					src += 3;
+					buf = reinterpret_cast<unsigned char*>(data->GetData()) + row * new_pitch;
+					src = reinterpret_cast<unsigned char*>(imgCommon.imData) + row * imgCommon.imPitch;
+					for (unsigned char col = 0; col < imgCommon.imWidth; col++)
+					{
+						*(unsigned char*)buf = *(unsigned char*)src;
+						buf[3] = 0;  // set alpha to 0
+						buf += 4;
+						src += 3;
+					}
 				}
+				imgCommon.imData = data->GetData();
+				imgCommon.imDataSize = data_size;
+				imgCommon.imPitch = new_pitch;
 			}
-			imgCommon.imData = data->GetData();
-			imgCommon.imDataSize = data_size;
-			imgCommon.imPitch = new_pitch;
+			int sizeData = sizeof(imgCommon.imData);
+			srvSubrecData.pData = imgCommon.imData;
+			srvSubrecData.RowPitch = imgCommon.imPitch;
+			srvSubrecData.SlicePitch = imgCommon.imPitch * imgCommon.imHeight;
+
+			UpdateSubresources(m_commandList.Get(), m_vec_texture[i].Get(), m_vec_textureUploadHeap[i].Get(), 0, 0, 1, &srvSubrecData);
+			m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vec_texture[i].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+
+			// Describe and create a SRV for the texture.
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Format = textureDesc.Format;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Texture2D.MipLevels = 1;
+			CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(m_srvHeap->GetCPUDescriptorHandleForHeapStart());
+			hDescriptor.ptr += m_TypedDescriptorSize * m_textureResCount;
+			m_device->CreateShaderResourceView(m_vec_texture[i].Get(), &srvDesc, hDescriptor);
+			m_textureResCount++;
+			delete[] imgCommon.imData;
+			imgCommon.imData = nullptr;
 		}
-		int sizeData = sizeof(imgCommon.imData);
-		srvSubrecData.pData = imgCommon.imData;
-		srvSubrecData.RowPitch = imgCommon.imPitch;
-		srvSubrecData.SlicePitch = imgCommon.imPitch * imgCommon.imHeight;
-
-		UpdateSubresources(m_commandList.Get(), m_texture.Get(), m_textureUploadHeap.Get(), 0, 0, 1, &srvSubrecData);
-		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-
-		// Describe and create a SRV for the texture.
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = textureDesc.Format;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1;
-		m_device->CreateShaderResourceView(m_texture.Get(), &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
-
-		delete[] imgCommon.imData;
-		imgCommon.imData = nullptr;
 	}
 }
 
@@ -553,10 +545,8 @@ void wxGraphicD3D12::PopulateCommandList()
 	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-	m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
 	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	int cbvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	srvOffset.ptr += cbvDescriptorSize;
+	srvOffset.ptr += m_TypedDescriptorSize * m_textureResCount;
 	m_commandList->SetGraphicsRootDescriptorTable(1, srvOffset);
 
 	m_commandList->RSSetViewports(1, &m_viewport);
@@ -577,6 +567,9 @@ void wxGraphicD3D12::PopulateCommandList()
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	for (int i = 0; i < m_vec_VertexBufferView.size(); i++)
 	{
+		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += i * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);
 		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_VertexBufferView[i]));
 		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
@@ -590,11 +583,6 @@ void wxGraphicD3D12::PopulateCommandList()
 
 void wxGraphicD3D12::WaitForPreviousFrame()
 {
-	// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
-	// This is code implemented as such for simplicity. The D3D12HelloFrameBuffering
-	// sample illustrates how to use fences for efficient resource usage and to
-	// maximize GPU utilization.
-
 	// Signal and increment the fence value.
 	const UINT64 fence = m_fenceValue;
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
@@ -626,76 +614,82 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(constBuffer));
 }
 
-void wxGraphicD3D12::LoadVertexIndexDataFromFile()
+void wxGraphicD3D12::LoadVertexIndexDataFromFile(std::vector<std::string>& title)
 {
-	std::string path = "../wxAsset/goddess artemis.ogex";
-	g_pSceneManager->LoadScene(path.c_str());
-	Scene scene = g_pSceneManager->GetSceneForRendering();
-	if (!scene.Geometries.empty())
-	for (auto& _it : scene.GeometryNodes)
+	for (int i = 0; i != title.size(); i++)
 	{
-		SceneGeometryNode* geoNode = _it.second;
-		if (geoNode)
-		{
-			std::string GeometryObjName = geoNode->GetGeometryObjectRef();
-			if (GeometryObjName != "")
+		std::string path = (ASSET_DIRECTORY + title[i] + SUFFIX_OGEX).c_str();
+		g_pSceneManager->LoadScene(path.c_str());
+		Scene scene = g_pSceneManager->GetSceneForRendering();
+		if (!scene.Geometries.empty())
+			for (auto& _it : scene.GeometryNodes)
 			{
-				const auto& _it = scene.Geometries.find(GeometryObjName);
-				if (_it != scene.Geometries.end())
+				SceneGeometryNode* geoNode = _it.second;
+				if (geoNode)
 				{
-					const auto& pGeometryObject = _it->second;
-					SceneObjectMesh* pMesh = pGeometryObject->GetMesh();
-					size_t elementCount = pMesh->GetVertexCount();
-					Vertex* vertexMix = new Vertex[elementCount];
-					for (uint32_t i = 0; i < pMesh->GetVertexPropertiesCount(); i++)
+					std::string GeometryObjName = geoNode->GetGeometryObjectRef();
+					if (GeometryObjName != "")
 					{
-						const SceneObjectVertexArray& v_property_array = pMesh->GetVertexPropertyArray(i);
-						size_t length = v_property_array.GetElementCount();
-						if (v_property_array.GetAttribute() == "position")
+						const auto& _it = scene.Geometries.find(GeometryObjName);
+						if (_it != scene.Geometries.end())
 						{
-							float* pPosition = (float*)v_property_array.GetData();
-							for (uint32_t i = 0; i < length; i = i + 3)
+							const auto& pGeometryObject = _it->second;
+							SceneObjectMesh* pMesh = pGeometryObject->GetMesh();
+							size_t elementCount = pMesh->GetVertexCount();
+							Vertex* vertexMix = new Vertex[elementCount];
+							for (uint32_t i = 0; i < pMesh->GetVertexPropertiesCount(); i++)
 							{
-								size_t label = i / 3;
-								vertexMix[label].position.element[0] = pPosition[i];
-								vertexMix[label].position.element[1] = pPosition[i + 1];
-								vertexMix[label].position.element[2] = pPosition[i + 2];
-								vertexMix[label].position.element[3] = 1.f;
+								const SceneObjectVertexArray& v_property_array = pMesh->GetVertexPropertyArray(i);
+								size_t length = v_property_array.GetElementCount();
+								if (v_property_array.GetAttribute() == "position")
+								{
+									float* pPosition = (float*)v_property_array.GetData();
+									for (uint32_t i = 0; i < length; i = i + 3)
+									{
+										size_t label = i / 3;
+										vertexMix[label].position.element[0] = pPosition[i];
+										vertexMix[label].position.element[1] = pPosition[i + 1];
+										vertexMix[label].position.element[2] = pPosition[i + 2];
+										vertexMix[label].position.element[3] = 1.f;
+									}
+								}
+								if (v_property_array.GetAttribute() == "texcoord")
+								{
+									float* pTexcoord = (float*)v_property_array.GetData();
+									for (uint32_t i = 0; i < length; i = i + 2)
+									{
+										size_t label = i / 2;
+										vertexMix[label].uv.element[0] = pTexcoord[i];
+										vertexMix[label].uv.element[1] = pTexcoord[i + 1];
+									}
+								}
 							}
-						}
-						if (v_property_array.GetAttribute() == "texcoord")
-						{
-							float* pTexcoord = (float*)v_property_array.GetData();
-							for (uint32_t i = 0; i < length; i = i + 2)
+							SceneObjectTransform* transform = geoNode->GetTransform(0);
+							if (transform)
 							{
-								size_t label = i / 2;
-								vertexMix[label].uv.element[0] = pTexcoord[i];
-								vertexMix[label].uv.element[1] = pTexcoord[i + 1];
+								constBuff.linearTransMatrix = *(transform->GetTransformMatrix());
 							}
+
+							CreateVertexBuffer(*vertexMix, elementCount);
+							delete[] vertexMix;
+							const auto indexCount = pMesh->GetIndexCount();
+							int* Indice = new int[indexCount];
+							for (uint32_t i = 0; i < pMesh->GetIndexGroupCount(); i++)
+							{
+								const SceneObjectIndexArray& v_index_array = pMesh->GetIndexArray(i);
+								int* pPosition = (int*)v_index_array.GetData();
+								for (size_t i = 0; i < indexCount; i++)
+								{
+									Indice[i] = pPosition[i];
+								}
+							}
+							CreateIndexBuffer(*Indice, indexCount);
+							m_vec_numIndices.push_back(indexCount);
+							delete[] Indice;
 						}
 					}
-					SceneObjectTransform* transform = geoNode->GetTransform(0);
-					constBuff.linearTransMatrix = *(transform->GetTransformMatrix());
-					
-					CreateVertexBuffer(*vertexMix, elementCount);
-					delete[] vertexMix;
-					const auto indexCount = pMesh->GetIndexCount();
-					int* Indice = new int[indexCount];
-					for (uint32_t i = 0; i < pMesh->GetIndexGroupCount(); i++)
-					{
-						const SceneObjectIndexArray& v_index_array = pMesh->GetIndexArray(i);
-						int* pPosition = (int*)v_index_array.GetData();
-						for (size_t i = 0; i < indexCount; i++)
-						{
-							Indice[i] = pPosition[i];
-						}
-					}
-					CreateIndexBuffer(*Indice, indexCount);
-					m_vec_numIndices.push_back(indexCount);
-					delete[] Indice;
 				}
 			}
-		}
 	}
 }	
 

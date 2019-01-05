@@ -49,7 +49,7 @@ public:
 				if (m_szSize > rhs.m_szSize)// && m_szAlignment == rhs.m_szAlignment)
 				{
 					memcpy(m_pData, rhs.m_pData, rhs.m_szSize);
-					memset(&m_pData[m_szSize], 0, m_szSize - rhs.m_szSize);
+					memset(&m_pData[rhs.m_szSize], 0, m_szSize - rhs.m_szSize);
 					m_szSize = rhs.m_szSize;
 					m_szAlignment = rhs.m_szAlignment;
 				}

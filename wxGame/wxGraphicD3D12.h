@@ -81,7 +81,6 @@ namespace wxGame {
 		ComPtr<ID3D12Resource> m_depthStencil;
 		ComPtr<ID3D12Resource> m_constantBuffer;
 		ComPtr<ID3D12Resource> m_indexBuffer;
-		ComPtr<ID3D12Resource> m_textureUploadHeap;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 		ComPtr<ID3D12CommandQueue> m_commandQueue;
 		ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -99,7 +98,12 @@ namespace wxGame {
 		D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_IndexBufferView;
 		ComPtr<ID3D12Resource> m_texture;
+		std::vector<ComPtr<ID3D12Resource>> m_vec_texture;
+		ComPtr<ID3D12Resource> m_textureUploadHeap;
+		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
 
+		std::vector<std::string> m_vec_AssetFileTitle;
+		std::vector<std::string> m_vec_TextureTitle;
 		unsigned int m_numIndices;
 		std::vector<unsigned int> m_vec_numIndices;
 		float angleAxisY;
@@ -109,11 +113,14 @@ namespace wxGame {
 		HANDLE m_fenceEvent;
 		ComPtr<ID3D12Fence> m_fence;
 		UINT64 m_fenceValue;
+		int m_textureResCount;
+		int m_TypedDescriptorSize;
 
 		void LoadPipeline();
 		void LoadAssets();
-		void CreateTexture();
-		void LoadVertexIndexDataFromFile();
+		void RetrievalAssetDirectory();
+		void CreateTexture(std::vector<std::string>&);
+		void LoadVertexIndexDataFromFile(std::vector<std::string>&);
 		void LoadDefaultVertexIndexData();
 		void CreateVertexBuffer(Vertex&, size_t);
 		void CreateIndexBuffer(int&, size_t);
