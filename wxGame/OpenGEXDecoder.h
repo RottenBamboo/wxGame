@@ -44,7 +44,7 @@ namespace wxGame {
 				{
 					auto material = materials[i];
 					_key = material->GetStructureName();
-					_node->AddSceneObjectRef(dynamic_cast<SceneObjectMaterial*>(m_SceneObjects[_key]));
+					_node->AddMaterialRef(_key);
 				}
 				auto geometryObjects = _structure.GetObjectStructure();
 				if (geometryObjects)
@@ -307,6 +307,7 @@ namespace wxGame {
 					}
 					_sub_structure = _sub_structure->Next();
 				}
+				scene.Materials[_key] = material;
 			}
 			return;
 			default:

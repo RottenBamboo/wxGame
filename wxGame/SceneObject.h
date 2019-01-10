@@ -291,48 +291,67 @@ namespace wxGame
 	{
 	protected:
 		std::string m_Name;
-		Color m_BaseColor;
-		Parameter m_metallic;
+		Color m_diffuseColor;
+		Parameter m_Metallic;
 		Parameter m_Roughness;
 		Normal m_Normal;
-		Parameter m_Specular;
+		Color m_Specular; 
+		Parameter m_SpecularPower;
+		Color m_Opacity;
+		Color m_Transparency;
+		Color m_Emission;
 		Parameter m_AmbientOcclusion;
 	public:
 		SceneObjectMaterial(const std::string& name) :BaseSceneObject(wxSceneType::wxSceneObjectTypeMaterial), m_Name(name) {}
 		SceneObjectMaterial(std::string&& name) :BaseSceneObject(wxSceneType::wxSceneObjectTypeMaterial), m_Name(std::move(name)) {}
-		SceneObjectMaterial(void) :BaseSceneObject(wxSceneType::wxSceneObjectTypeMaterial), m_Name(""), m_BaseColor(Vector4FT(1.0f)), m_metallic(0.0f), m_Roughness(0.0f), m_Normal(Vector3FT({ 0.0f,0.0f,1.0f })), m_Specular(0.0f), m_AmbientOcclusion(1.0f) {}
+		SceneObjectMaterial(void) :BaseSceneObject(wxSceneType::wxSceneObjectTypeMaterial), 
+			m_Name(""), m_diffuseColor(Vector4FT(1.0f)), m_Metallic(0.0f), m_Roughness(0.0f),
+			m_Normal(Vector3FT({ 0.0f,0.0f,1.0f })), m_Specular(Vector4FT({ 0.0f ,0.0f, 0.0f ,0.0f })),
+			m_SpecularPower(1.0f), m_Opacity(Vector4FT({ 0.0f ,0.0f, 0.0f ,0.0f })),
+			m_Transparency(Vector4FT({ 0.0f ,0.0f, 0.0f ,0.0f })), m_Emission(Vector4FT({ 0.0f ,0.0f, 0.0f ,0.0f })),
+			m_AmbientOcclusion(1.0f){}
+
+		Color GetSpecular() { return m_Specular; }
+		float GetRoughness() { return m_Roughness.Value; }
+		float GetAmbientOcclusion() { return m_AmbientOcclusion.Value; }
+		Color GetDiffuseColor() { return m_diffuseColor; }
 		void SetName(const std::string& name) { m_Name = name; }
 		void SetName(std::string&& name) { m_Name = std::move(name); }
+		std::string GetName() { return m_Name; }
 		void SetColor(std::string& attrib, Vector4FT& color)
 		{
 			if (attrib == "diffuse")
 			{
-				m_BaseColor = Color(color);
+				m_diffuseColor = Color(color);
+			}
+			else if (attrib == "specular") {
+				m_Specular = Color(color);
+			}
+			else if (attrib == "emission") {
+				m_Emission = Color(color);
+			}
+			else if (attrib == "opacity") {
+				m_Opacity = Color(color);
+			}
+			else if (attrib == "transparency") {
+				m_Transparency = Color(color);
 			}
 		}
-		void SetParam(std::string& attrib, float param) {};
-		void SetTexture(std::string & attrib, std::string& textureName)
+		void SetParam(std::string& attrib, float param) 
 		{
-			if (attrib == "diffuse")
-			{
-				m_BaseColor = new SceneObjectTexture(textureName);
+			if (attrib == "metallic") {
+				m_Metallic = Parameter(param);
 			}
-		}
-		void SetTexture(std::string& attrib, SceneObjectTexture*& texture)
-		{
-			if (attrib == "diffuse")
-			{
-				m_BaseColor = texture;
+			else if (attrib == "roughness") {
+				m_Roughness = Parameter(param);
 			}
-		}
-
-		void LoadTextures()
-		{
-			if (m_BaseColor.Map)
-			{
-				m_BaseColor.Map->LoadTexture();
+			else if (attrib == "specular_power") {
+				m_SpecularPower = Parameter(param);
 			}
-		}
+		};
+		void SetTexture(std::string & attrib, std::string& textureName) {}
+		void SetTexture(std::string& attrib, SceneObjectTexture*& texture) {}
+		void LoadTextures(){}
 	};
 
 	class SceneObjectGeometry :public BaseSceneObject

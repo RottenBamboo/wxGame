@@ -8,19 +8,27 @@
 // PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 //
 //*********************************************************
-
-cbuffer cmatrix:register(b0)
+cbuffer cmatrix:register(b1)
 {
 	matrix linearTransMatrix;
 	matrix viewMatrix;
 	matrix perspectiveMatrix;
 	matrix rotatMatrix;
 }
+//
+//cbuffer cmaterial:register(b0)
+//{
+//	float3 diffuse;
+//	float  ambientOcclusion;
+//	float3 fresnelR0;
+//	float  roughness;
+//}
 
 struct PSInput
 {
 	float4 position : SV_POSITION;
 	float2 uv : TEXCOORD;
+	float3 normal : NORMAL;
 };
 
 Texture2D g_texture : register(t0);

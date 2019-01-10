@@ -108,6 +108,7 @@ void wxGraphicD3D12::LoadPipeline()
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
 	RetrievalAssetDirectory();
+	LoadDataFromOGEX(m_vec_AssetFileTitle);
 
 	// Create descriptor heaps.
 	{
@@ -127,7 +128,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = m_vec_TextureTitle.size() + 1;
+		srvHeapDesc.NumDescriptors = m_vec_TextureTitle.size() + GetSceneGeometryNodeCount() + 1;	//GeometryNode count is equal with material count
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -179,7 +180,7 @@ void wxGraphicD3D12::LoadAssets()
 
 		CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
 		CD3DX12_ROOT_PARAMETER1 rootParameters[2];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
@@ -226,8 +227,9 @@ void wxGraphicD3D12::LoadAssets()
 		// Define the vertex input layout.
 		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
 		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 		D3D12_RASTERIZER_DESC RasterizerDefault;
 		RasterizerDefault.FillMode = D3D12_FILL_MODE_SOLID;
@@ -283,7 +285,7 @@ void wxGraphicD3D12::LoadAssets()
 
 	m_TypedDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	LoadVertexIndexDataFromFile(m_vec_AssetFileTitle);
+	ParserDataFromScene(m_vec_AssetFileTitle);
 	CreateTexture(m_vec_TextureTitle);
 	
 	//resource Description for depth stencil buffer
@@ -336,7 +338,7 @@ void wxGraphicD3D12::LoadAssets()
 	D3D12_RESOURCE_DESC constantBufferDesc;
 	constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	constantBufferDesc.Alignment = 0;
-	constantBufferDesc.Width = sizeof(constBuffer);
+	constantBufferDesc.Width = sizeof(wxConstBuffer);
 	constantBufferDesc.Height = 1;
 	constantBufferDesc.DepthOrArraySize = 1;
 	constantBufferDesc.MipLevels = 1;
@@ -357,11 +359,11 @@ void wxGraphicD3D12::LoadAssets()
 	m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * m_textureResCount;
+	cbvHandle.ptr += m_TypedDescriptorSize * (m_textureSRVCount + m_MaterialCount);
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
 	constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
-	constantBufferView.SizeInBytes = sizeof(constBuffer);
+	constantBufferView.SizeInBytes = sizeof(wxConstBuffer);
 	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);
 
 	// Note: ComPtr's are CPU objects but this resource needs to stay in scope until
@@ -488,9 +490,9 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 			srvDesc.Texture2D.MipLevels = 1;
 			CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(m_srvHeap->GetCPUDescriptorHandleForHeapStart());
-			hDescriptor.ptr += m_TypedDescriptorSize * m_textureResCount;
+			hDescriptor.ptr += m_TypedDescriptorSize * m_textureSRVCount;
 			m_device->CreateShaderResourceView(m_vec_texture[i].Get(), &srvDesc, hDescriptor);
-			m_textureResCount++;
+			m_textureSRVCount++;
 			delete[] imgCommon.imData;
 			imgCommon.imData = nullptr;
 		}
@@ -545,9 +547,9 @@ void wxGraphicD3D12::PopulateCommandList()
 	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += m_TypedDescriptorSize * m_textureResCount;
-	m_commandList->SetGraphicsRootDescriptorTable(1, srvOffset);
+	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from m_vec_cbvMat to Matrix4X4FT constantBuff
+	srvConstantBuff.ptr += m_TypedDescriptorSize * (m_textureSRVCount);
+	m_commandList->SetGraphicsRootDescriptorTable(1, srvConstantBuff);
 
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
@@ -607,33 +609,54 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	}
 	int k = static_cast<int>(angleAxisY) / 360;
 	angleAxisY = angleAxisY + k * 360;
-	//constBuffer matResult;
+	//wxConstBuffer matResult;
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.viewMatrix = BuildViewMatrix({ 0,-2,-50.f }, { 0,0,0.f }, { 0.f,1.f,0.f });
 	constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 100.0f);
-	memcpy(m_pCBDataBegin, &constBuff, sizeof(constBuffer));
+	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstBuffer));
 }
 
-void wxGraphicD3D12::LoadVertexIndexDataFromFile(std::vector<std::string>& title)
+void wxGraphicD3D12::LoadDataFromOGEX(std::vector<std::string>& title)
 {
 	for (int i = 0; i != title.size(); i++)
 	{
 		std::string path = (ASSET_DIRECTORY + title[i] + SUFFIX_OGEX).c_str();
-		g_pSceneManager->LoadScene(path.c_str());
-		Scene scene = g_pSceneManager->GetSceneForRendering();
+		SceneManager* sceneManager = new SceneManager;
+		sceneManager->LoadScene(path.c_str());
+		g_vecpSceneManager.push_back(sceneManager);
+	}
+}
+
+int wxGraphicD3D12::GetSceneGeometryNodeCount()
+{
+	int count = 0;
+	for (auto& _it : g_vecpSceneManager)
+	{
+		Scene scene = _it->GetSceneForRendering();
+		count += scene.GeometryNodes.size();
+	}
+	return count;
+}
+
+void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
+{
+	for (auto& _it : g_vecpSceneManager)
+	{
+		Scene scene = _it->GetSceneForRendering();
 		if (!scene.Geometries.empty())
 			for (auto& _it : scene.GeometryNodes)
 			{
 				SceneGeometryNode* geoNode = _it.second;
+				std::string title = _it.first;
 				if (geoNode)
 				{
 					std::string GeometryObjName = geoNode->GetGeometryObjectRef();
 					if (GeometryObjName != "")
 					{
-						const auto& _it = scene.Geometries.find(GeometryObjName);
-						if (_it != scene.Geometries.end())
+						const auto& _itr = scene.Geometries.find(GeometryObjName);
+						if (_itr != scene.Geometries.end())
 						{
-							const auto& pGeometryObject = _it->second;
+							const auto& pGeometryObject = _itr->second;
 							SceneObjectMesh* pMesh = pGeometryObject->GetMesh();
 							size_t elementCount = pMesh->GetVertexCount();
 							Vertex* vertexMix = new Vertex[elementCount];
@@ -663,6 +686,17 @@ void wxGraphicD3D12::LoadVertexIndexDataFromFile(std::vector<std::string>& title
 										vertexMix[label].uv.element[1] = pTexcoord[i + 1];
 									}
 								}
+								if (v_property_array.GetAttribute() == "normal")
+								{
+									float* pNormal = (float*)v_property_array.GetData();
+									for (uint32_t i = 0; i < length; i = i + 3)
+									{
+										size_t label = i / 3;
+										vertexMix[label].Normal.element[0] = pNormal[i];
+										vertexMix[label].Normal.element[1] = pNormal[i + 1];
+										vertexMix[label].Normal.element[2] = pNormal[i + 2];
+									}
+								}
 							}
 							SceneObjectTransform* transform = geoNode->GetTransform(0);
 							if (transform)
@@ -686,12 +720,30 @@ void wxGraphicD3D12::LoadVertexIndexDataFromFile(std::vector<std::string>& title
 							CreateIndexBuffer(*Indice, indexCount);
 							m_vec_numIndices.push_back(indexCount);
 							delete[] Indice;
+
+							wxMaterial mat;
+							const auto& _itr1 = scene.Materials.find(geoNode->GetGeometryMaterialName(0));
+							if (_itr1 != scene.Materials.end())
+							{
+								SceneObjectMaterial* matNode = _itr1->second;
+								mat.Roughness = matNode->GetRoughness();
+								Color tempColor = matNode->GetDiffuseColor();
+								mat.diffuse = Vector3FT({ tempColor.Value.element[0], tempColor.Value.element[1], tempColor.Value.element[2] });
+								mat.m_AmbientOcclusion = matNode->GetAmbientOcclusion();
+								mat.FresnelR0 = Vector3FT({ matNode->GetSpecular().Value.element[0], matNode->GetSpecular().Value.element[1], matNode->GetSpecular().Value.element[2] });
+								m_vec_matRes.push_back(ComPtr<ID3D12Resource>());
+								m_vec_cbvMat.push_back(D3D12_CONSTANT_BUFFER_VIEW_DESC());
+								m_vec_matStut.push_back(mat);
+								m_MaterialCount++;
+							}
 						}
 					}
 				}
 			}
 	}
-}	
+
+	CreateConstantMaterialBuffer(m_vec_matStut);
+}
 
 void wxGraphicD3D12::LoadDefaultVertexIndexData()
 {
@@ -860,11 +912,46 @@ void wxGraphicD3D12::CreateIndexBuffer(int& indice, size_t size)
 	m_vec_IndexBufferView.push_back(m_indexBufferView);
 }
 
-void wxGraphicD3D12::LoadSceneNode(const BaseSceneNode& baseSceneNode)
+void wxGraphicD3D12::CreateConstantMaterialBuffer(std::vector<wxMaterial>& mat)
 {
-	HRESULT hr;
-	if (!m_commandList)
+	for (int i = 0; i != mat.size(); i++)
 	{
-		ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
+		HRESULT hr;
+		D3D12_HEAP_PROPERTIES cbvHeapProperties;
+		cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+		cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		cbvHeapProperties.CreationNodeMask = 1;
+		cbvHeapProperties.VisibleNodeMask = 1;
+
+		D3D12_RESOURCE_DESC constantMaterialDesc;
+		constantMaterialDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		constantMaterialDesc.Alignment = 0;
+		constantMaterialDesc.Width = sizeof(wxMaterial);
+		constantMaterialDesc.Height = 1;
+		constantMaterialDesc.DepthOrArraySize = 1;
+		constantMaterialDesc.MipLevels = 1;
+		constantMaterialDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
+		constantMaterialDesc.SampleDesc.Count = 1;
+		constantMaterialDesc.SampleDesc.Quality = 0;
+		constantMaterialDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		constantMaterialDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantMaterialDesc, \
+			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_vec_matRes[i]), (void**)&m_vec_matRes[i]);
+
+		// Map the constant buffers. Note that unlike D3D11, the resource 
+		// does not need to be unmapped for use by the GPU. In this sample, 
+		// the resource stays 'permenantly' mapped to avoid overhead with 
+		// mapping/unmapping each frame.
+		D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
+		m_vec_matRes[i]->Map(0, &readRange, &m_pwxMatDataBegin);
+		memcpy(m_pwxMatDataBegin, &mat[i], sizeof(wxMaterial));
+		D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+		cbvHandle.ptr += m_TypedDescriptorSize * (m_textureSRVCount + i);
+
+		m_vec_cbvMat[i].BufferLocation = m_vec_matRes[i]->GetGPUVirtualAddress();
+		m_vec_cbvMat[i].SizeInBytes = sizeof(wxConstBuffer);
+		m_device->CreateConstantBufferView(&m_vec_cbvMat[i], cbvHandle);
 	}
 }

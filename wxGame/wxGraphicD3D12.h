@@ -51,16 +51,17 @@ namespace wxGame {
 		{
 			Vector4FT position;
 			Vector2FT uv;
+			Vector3FT Normal;
 		};
 
-		struct constBuffer
+		struct wxConstBuffer
 		{
 			Matrix4X4FT linearTransMatrix;
 			Matrix4X4FT viewMatrix;
 			Matrix4X4FT perspectiveMatrix;
 			Matrix4X4FT rotatMatrix;
 
-			constBuffer()// :rotatYMatrix(0),projMatrix(0),perspectiveMatrix(0), lightMaitrx(0)
+			wxConstBuffer()// :rotatYMatrix(0),projMatrix(0),perspectiveMatrix(0), lightMaitrx(0)
 			{
 				MatrixIdentity(linearTransMatrix);
 				MatrixIdentity(viewMatrix);
@@ -69,8 +70,35 @@ namespace wxGame {
 			}
 		};
 
+		struct wxMaterial
+		{
+			Vector3FT diffuse;
+			float m_AmbientOcclusion;
+			Vector3FT FresnelR0;
+			float Roughness;
+			wxMaterial()
+			{
+				diffuse = Vector3FT({ 1.0f, 1.0f, 1.0f, 1.0f });
+				m_AmbientOcclusion = 0.f;
+				Roughness = 0.25f;
+				FresnelR0 = Vector3FT({0.01f, 0.01f, 0.01f });
+			}
+		};
+
+		struct wxLight
+		{
+			Vector3FT Strength;
+			float FalloffStart;                          // point/spot light only
+			Vector3FT Direction;// directional/spot light only
+			float FalloffEnd;                           // point/spot light only
+			Vector3FT Position;  // point/spot light only
+			float SpotPower;                            // spot light only
+		};
+
 		void* m_pCBDataBegin;			//constant buffer data pointer
-		constBuffer constBuff;
+		wxConstBuffer constBuff;
+		void* m_pwxMatDataBegin;
+		wxMaterial matBuff;
 
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
@@ -80,6 +108,7 @@ namespace wxGame {
 		ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 		ComPtr<ID3D12Resource> m_depthStencil;
 		ComPtr<ID3D12Resource> m_constantBuffer;
+		ComPtr<ID3D12Resource> m_constantMaterial;
 		ComPtr<ID3D12Resource> m_indexBuffer;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 		ComPtr<ID3D12CommandQueue> m_commandQueue;
@@ -106,6 +135,9 @@ namespace wxGame {
 		std::vector<std::string> m_vec_TextureTitle;
 		unsigned int m_numIndices;
 		std::vector<unsigned int> m_vec_numIndices;
+		std::vector<ComPtr<ID3D12Resource>> m_vec_matRes;
+		std::vector<D3D12_CONSTANT_BUFFER_VIEW_DESC> m_vec_cbvMat;
+		std::vector<wxMaterial> m_vec_matStut;
 		float angleAxisY;
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv;
 		// Synchronization objects.
@@ -113,23 +145,26 @@ namespace wxGame {
 		HANDLE m_fenceEvent;
 		ComPtr<ID3D12Fence> m_fence;
 		UINT64 m_fenceValue;
-		int m_textureResCount;
+		int m_textureSRVCount;
+		int m_MaterialCount;
 		int m_TypedDescriptorSize;
 
 		void LoadPipeline();
 		void LoadAssets();
 		void RetrievalAssetDirectory();
 		void CreateTexture(std::vector<std::string>&);
-		void LoadVertexIndexDataFromFile(std::vector<std::string>&);
+		void ParserDataFromScene(std::vector<std::string>&);
+		void LoadDataFromOGEX(std::vector<std::string>&);
 		void LoadDefaultVertexIndexData();
 		void CreateVertexBuffer(Vertex&, size_t);
 		void CreateIndexBuffer(int&, size_t);
-		void LoadSceneNode(const BaseSceneNode& baseSceneNode);
-		std::vector<UINT8> GenerateTextureData();
+		void CreateConstantMaterialBuffer(std::vector<wxMaterial>&);
 		void PopulateCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
+		int	GetSceneGeometryNodeCount();
 	};
 
 	extern SceneManager* g_pSceneManager;
+	extern std::vector<SceneManager*> g_vecpSceneManager;
 }

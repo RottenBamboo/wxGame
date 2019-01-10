@@ -73,7 +73,7 @@ namespace wxGame
 		bool m_bVisible;
 		bool m_bShadow;
 		bool m_bMotionBlur;
-		std::vector<SceneObjectMaterial*> m_Materials;
+		std::vector<std::string> m_Materials;
 		std::string m_GeometryObjs;
 	protected:
 		virtual void dump(std::ostream& out)
@@ -84,7 +84,7 @@ namespace wxGame
 			out << "Motion Blur:" << m_bMotionBlur << std::endl;
 			out << "Material(s):" << std::endl;
 			for (auto material : m_Materials) {
-				out << *material << std::endl;
+				out << material << std::endl;
 			}
 		}
 	public:
@@ -96,9 +96,10 @@ namespace wxGame
 		void SetIfMotionBlur(bool motion_blur) { m_bMotionBlur = motion_blur; }
 		const bool MotionBlur() { return m_bMotionBlur; }
 		using SceneNode::AddSceneObjectRef;
-		void AddSceneObjectRef(SceneObjectMaterial* const &object) { m_Materials.push_back(object); }
 		void AddGeometryObjectRef(const char* object) { m_GeometryObjs = object; }
+		void AddMaterialRef(const std::string& key) { m_Materials.push_back(key); }
 		std::string GetGeometryObjectRef() { return m_GeometryObjs; }
+		std::string GetGeometryMaterialName(size_t pos) { return m_Materials[pos]; }
 	};
 
 	class SceneLightNode :public SceneNode<SceneObjectLight>
