@@ -19,6 +19,9 @@
 #include "SceneNode.h"
 #include "SceneManager.h"
 
+#define SUNLIGHT_COUNT (int)1
+#define CONSTANTMATRIX_COUNT (int)1
+
 using namespace DirectX;
 using namespace Mathmatic;
 using namespace wxGame;
@@ -72,14 +75,12 @@ namespace wxGame {
 
 		struct wxMaterial
 		{
-			Vector3FT diffuse;
-			float m_AmbientOcclusion;
+			Vector4FT diffuse;
 			Vector3FT FresnelR0;
 			float Roughness;
 			wxMaterial()
 			{
-				diffuse = Vector3FT({ 1.0f, 1.0f, 1.0f, 1.0f });
-				m_AmbientOcclusion = 0.f;
+				diffuse = Vector4FT({ 1.0f, 1.0f, 1.0f, 1.0f });
 				Roughness = 0.25f;
 				FresnelR0 = Vector3FT({0.01f, 0.01f, 0.01f });
 			}
@@ -98,7 +99,8 @@ namespace wxGame {
 		void* m_pCBDataBegin;			//constant buffer data pointer
 		wxConstBuffer constBuff;
 		void* m_pwxMatDataBegin;
-		wxMaterial matBuff;
+		wxLight m_sunLightBuff;
+		void* m_psunLightDataBegin;
 
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
@@ -109,6 +111,7 @@ namespace wxGame {
 		ComPtr<ID3D12Resource> m_depthStencil;
 		ComPtr<ID3D12Resource> m_constantBuffer;
 		ComPtr<ID3D12Resource> m_constantMaterial;
+		ComPtr<ID3D12Resource> m_sunLight;
 		ComPtr<ID3D12Resource> m_indexBuffer;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 		ComPtr<ID3D12CommandQueue> m_commandQueue;
@@ -127,7 +130,7 @@ namespace wxGame {
 		D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_IndexBufferView;
 		ComPtr<ID3D12Resource> m_texture;
-		std::vector<ComPtr<ID3D12Resource>> m_vec_texture;
+		std::vector<ID3D12Resource*> m_vec_texture;
 		ComPtr<ID3D12Resource> m_textureUploadHeap;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
 
@@ -138,6 +141,7 @@ namespace wxGame {
 		std::vector<ComPtr<ID3D12Resource>> m_vec_matRes;
 		std::vector<D3D12_CONSTANT_BUFFER_VIEW_DESC> m_vec_cbvMat;
 		std::vector<wxMaterial> m_vec_matStut;
+		D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvSunLight;
 		float angleAxisY;
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv;
 		// Synchronization objects.
@@ -159,6 +163,7 @@ namespace wxGame {
 		void CreateVertexBuffer(Vertex&, size_t);
 		void CreateIndexBuffer(int&, size_t);
 		void CreateConstantMaterialBuffer(std::vector<wxMaterial>&);
+		void CreateSunLightBuffer();
 		void PopulateCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);

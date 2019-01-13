@@ -128,7 +128,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = m_vec_TextureTitle.size() + GetSceneGeometryNodeCount() + 1;	//GeometryNode count is equal with material count
+		srvHeapDesc.NumDescriptors = m_vec_TextureTitle.size() + GetSceneGeometryNodeCount() + CONSTANTMATRIX_COUNT + SUNLIGHT_COUNT;	//GeometryNode count is equal with material count
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -180,7 +180,7 @@ void wxGraphicD3D12::LoadAssets()
 
 		CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 3, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
 		CD3DX12_ROOT_PARAMETER1 rootParameters[2];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
@@ -221,8 +221,8 @@ void wxGraphicD3D12::LoadAssets()
 #else
 		UINT compileFlags = 0;
 #endif
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shaders.hlsl").c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shaders.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shaders.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shaders.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 
 		// Define the vertex input layout.
 		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -287,7 +287,7 @@ void wxGraphicD3D12::LoadAssets()
 
 	ParserDataFromScene(m_vec_AssetFileTitle);
 	CreateTexture(m_vec_TextureTitle);
-	
+
 	//resource Description for depth stencil buffer
 	D3D12_HEAP_PROPERTIES dsHeapProperties;
 	dsHeapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -325,46 +325,50 @@ void wxGraphicD3D12::LoadAssets()
 	// Create DepthStencilView
 	m_device->CreateDepthStencilView(m_depthStencil.Get(), &dsvBufferDesc, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	// Create CBV resource and bind it to the pipeline by ConstantBufferView.
-	//resource Description for constant buffer
+	{
+		// Create CBV resource and bind it to the pipeline by ConstantBufferView.
+		//resource Description for constant buffer
 
-	D3D12_HEAP_PROPERTIES cbvHeapProperties;
-	cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-	cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	cbvHeapProperties.CreationNodeMask = 1;
-	cbvHeapProperties.VisibleNodeMask = 1;
+		D3D12_HEAP_PROPERTIES cbvHeapProperties;
+		cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+		cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		cbvHeapProperties.CreationNodeMask = 1;
+		cbvHeapProperties.VisibleNodeMask = 1;
 
-	D3D12_RESOURCE_DESC constantBufferDesc;
-	constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	constantBufferDesc.Alignment = 0;
-	constantBufferDesc.Width = sizeof(wxConstBuffer);
-	constantBufferDesc.Height = 1;
-	constantBufferDesc.DepthOrArraySize = 1;
-	constantBufferDesc.MipLevels = 1;
-	constantBufferDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
-	constantBufferDesc.SampleDesc.Count = 1;
-	constantBufferDesc.SampleDesc.Quality = 0;
-	constantBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	constantBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		D3D12_RESOURCE_DESC constantBufferDesc;
+		constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		constantBufferDesc.Alignment = 0;
+		constantBufferDesc.Width = sizeof(wxConstBuffer);
+		constantBufferDesc.Height = 1;
+		constantBufferDesc.DepthOrArraySize = 1;
+		constantBufferDesc.MipLevels = 1;
+		constantBufferDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
+		constantBufferDesc.SampleDesc.Count = 1;
+		constantBufferDesc.SampleDesc.Quality = 0;
+		constantBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		constantBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantBufferDesc, \
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_constantBuffer), (void**)&m_constantBuffer);
+		hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantBufferDesc, \
+			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_constantBuffer), (void**)&m_constantBuffer);
 
-	// Map the constant buffers. Note that unlike D3D11, the resource 
-	// does not need to be unmapped for use by the GPU. In this sample, 
-	// the resource stays 'permenantly' mapped to avoid overhead with 
-	// mapping/unmapping each frame.
-	D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
-	m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
+		// Map the constant buffers. Note that unlike D3D11, the resource 
+		// does not need to be unmapped for use by the GPU. In this sample, 
+		// the resource stays 'permenantly' mapped to avoid overhead with 
+		// mapping/unmapping each frame.
+		D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
+		m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (m_textureSRVCount + m_MaterialCount);
+		D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+		cbvHandle.ptr += m_TypedDescriptorSize * (m_textureSRVCount + m_MaterialCount + SUNLIGHT_COUNT);
 
-	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
-	constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
-	constantBufferView.SizeInBytes = sizeof(wxConstBuffer);
-	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);
+		D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
+		constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
+		constantBufferView.SizeInBytes = sizeof(wxConstBuffer);
+		m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);
+	}
+
+	CreateSunLightBuffer();
 
 	// Note: ComPtr's are CPU objects but this resource needs to stay in scope until
 	// the command list that references it has finished executing on the GPU.
@@ -436,7 +440,7 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 				nullptr,
 				IID_PPV_ARGS(&(m_vec_texture[i])));
 
-			const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_vec_texture[i].Get(), 0, 1);
+			const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_vec_texture[i], 0, 1);
 
 			// Create the GPU upload buffer.
 			hr = m_device->CreateCommittedResource(
@@ -480,8 +484,8 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			srvSubrecData.RowPitch = imgCommon.imPitch;
 			srvSubrecData.SlicePitch = imgCommon.imPitch * imgCommon.imHeight;
 
-			UpdateSubresources(m_commandList.Get(), m_vec_texture[i].Get(), m_vec_textureUploadHeap[i].Get(), 0, 0, 1, &srvSubrecData);
-			m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vec_texture[i].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+			UpdateSubresources(m_commandList.Get(), m_vec_texture[i], m_vec_textureUploadHeap[i].Get(), 0, 0, 1, &srvSubrecData);
+			m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vec_texture[i], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 			// Describe and create a SRV for the texture.
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -491,7 +495,7 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			srvDesc.Texture2D.MipLevels = 1;
 			CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(m_srvHeap->GetCPUDescriptorHandleForHeapStart());
 			hDescriptor.ptr += m_TypedDescriptorSize * m_textureSRVCount;
-			m_device->CreateShaderResourceView(m_vec_texture[i].Get(), &srvDesc, hDescriptor);
+			m_device->CreateShaderResourceView(m_vec_texture[i], &srvDesc, hDescriptor);
 			m_textureSRVCount++;
 			delete[] imgCommon.imData;
 			imgCommon.imData = nullptr;
@@ -547,7 +551,7 @@ void wxGraphicD3D12::PopulateCommandList()
 	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from m_vec_cbvMat to Matrix4X4FT constantBuff
+	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from m_vec_cbvMat and Matrix4X4FT constantBuff and m_sunLightBuff
 	srvConstantBuff.ptr += m_TypedDescriptorSize * (m_textureSRVCount);
 	m_commandList->SetGraphicsRootDescriptorTable(1, srvConstantBuff);
 
@@ -728,8 +732,8 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 								SceneObjectMaterial* matNode = _itr1->second;
 								mat.Roughness = matNode->GetRoughness();
 								Color tempColor = matNode->GetDiffuseColor();
-								mat.diffuse = Vector3FT({ tempColor.Value.element[0], tempColor.Value.element[1], tempColor.Value.element[2] });
-								mat.m_AmbientOcclusion = matNode->GetAmbientOcclusion();
+								mat.diffuse = Vector4FT({ tempColor.Value.element[0], tempColor.Value.element[1], tempColor.Value.element[2] , 1.0f});
+								//mat.m_AmbientOcclusion = matNode->GetAmbientOcclusion();
 								mat.FresnelR0 = Vector3FT({ matNode->GetSpecular().Value.element[0], matNode->GetSpecular().Value.element[1], matNode->GetSpecular().Value.element[2] });
 								m_vec_matRes.push_back(ComPtr<ID3D12Resource>());
 								m_vec_cbvMat.push_back(D3D12_CONSTANT_BUFFER_VIEW_DESC());
@@ -940,6 +944,7 @@ void wxGraphicD3D12::CreateConstantMaterialBuffer(std::vector<wxMaterial>& mat)
 		hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantMaterialDesc, \
 			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_vec_matRes[i]), (void**)&m_vec_matRes[i]);
 
+		const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_vec_matRes[i].Get(), 0, 1);
 		// Map the constant buffers. Note that unlike D3D11, the resource 
 		// does not need to be unmapped for use by the GPU. In this sample, 
 		// the resource stays 'permenantly' mapped to avoid overhead with 
@@ -951,7 +956,51 @@ void wxGraphicD3D12::CreateConstantMaterialBuffer(std::vector<wxMaterial>& mat)
 		cbvHandle.ptr += m_TypedDescriptorSize * (m_textureSRVCount + i);
 
 		m_vec_cbvMat[i].BufferLocation = m_vec_matRes[i]->GetGPUVirtualAddress();
-		m_vec_cbvMat[i].SizeInBytes = sizeof(wxConstBuffer);
+		m_vec_cbvMat[i].SizeInBytes = ALIGN_256(sizeof(wxMaterial));
 		m_device->CreateConstantBufferView(&m_vec_cbvMat[i], cbvHandle);
 	}
+}
+
+void wxGraphicD3D12::CreateSunLightBuffer()
+{
+	HRESULT hr;
+	D3D12_HEAP_PROPERTIES cbvHeapProperties;
+	cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+	cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	cbvHeapProperties.CreationNodeMask = 1;
+	cbvHeapProperties.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC constantSunLightDesc;
+	constantSunLightDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	constantSunLightDesc.Alignment = 0;
+	constantSunLightDesc.Width = sizeof(wxLight);
+	constantSunLightDesc.Height = 1;
+	constantSunLightDesc.DepthOrArraySize = 1;
+	constantSunLightDesc.MipLevels = 1;
+	constantSunLightDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
+	constantSunLightDesc.SampleDesc.Count = 1;
+	constantSunLightDesc.SampleDesc.Quality = 0;
+	constantSunLightDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	constantSunLightDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantSunLightDesc, \
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
+
+	m_sunLightBuff.Direction = Vector3FT({ -1.f,-1.f,-1.f });
+	m_sunLightBuff.Position = Vector3FT({ 100.f,100.f,100.f });
+	m_sunLightBuff.Strength = Vector3FT({ 0.8f,0.8f,0.8f });
+	m_sunLightBuff.FalloffEnd = 0.f;
+	m_sunLightBuff.FalloffStart = 0.f;
+	m_sunLightBuff.SpotPower = 0.f;
+
+	D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
+	m_sunLight->Map(0, &readRange, &m_psunLightDataBegin);
+	memcpy(m_psunLightDataBegin, &m_sunLightBuff, sizeof(wxLight));
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	cbvHandle.ptr += m_TypedDescriptorSize * (m_textureSRVCount + m_MaterialCount);
+	
+	m_cbvSunLight.BufferLocation = m_sunLight->GetGPUVirtualAddress();
+	m_cbvSunLight.SizeInBytes = ALIGN_256(sizeof(wxLight));
+	m_device->CreateConstantBufferView(&m_cbvSunLight, cbvHandle);
 }
