@@ -65,7 +65,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;OpenGEX.lib;OpenDDL.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;XInput.lib;d3dcompiler.lib;OpenGEX.lib;OpenDDL.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>d3d12.dll</DelayLoadDLLs>
       <AdditionalLibraryDirectories>E:\Code\wxGame\wxGame\bin\Debug;$(ProjectDir)bin\Debug\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>

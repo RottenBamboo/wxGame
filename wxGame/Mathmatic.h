@@ -132,6 +132,17 @@ namespace Mathmatic
 	}
 
 	template <template<int, typename> class TT = Vector, int count, typename T>
+	TT<count, T> operator*(const TT<count, T>& vec1, T& vec2)
+	{
+		TT<count, T> sub;
+		for (int itr = 0; itr != count; itr++)
+		{
+			sub.element[itr] = vec1.element[itr] * vec2;
+		}
+		return sub;
+	}
+
+	template <template<int, typename> class TT = Vector, int count, typename T>
 	TT<count, T>& operator-=(TT<count, T>& vec1, const TT<count, T>& vec2)
 	{
 		for (int itr = 0; itr != count; itr++)
@@ -153,11 +164,11 @@ namespace Mathmatic
 	}
 
 	template<template<int, typename> class TT = Vector, int count, typename T>
-	TT<count, T> vector3CrossProduct(const TT<count, T>& vec1, const TT<count, T>& vec2)
+	TT<count, T> vectorCrossProduct(const TT<count, T>& vec1, const TT<count, T>& vec2)
 	{
 		TT<count, T> result;
 
-		if (count < 3)
+		if (count < 4)
 		{
 			for (int itr = 0; itr != count; itr++)
 			{
@@ -175,6 +186,13 @@ namespace Mathmatic
 			result.element[itr] = 0;
 		}
 		return result;
+	}
+
+	template<template<int, typename> class TT = Vector>
+	Vector4FT GetRightAxis(Vector4FT& front, Vector4FT& up)
+	{
+		Vector4FT axisRight = vectorNormalize(vectorCrossProduct(up, vectorNormalize(front)));
+		return axisRight;
 	}
 
 	template <template<int, typename> class TT = Vector, int count, typename T>
@@ -569,6 +587,43 @@ namespace Mathmatic
 		return result;
 	}
 
+	template <template<int, typename> class TT = Vector, int count, typename T>
+	void RotateYAxis(TT<count, T>& vec, const T angle)
+	{
+		float cos = cosf(angle), sin = sinf(angle);
+		float tempElem[] = { cos,  0.0f, -sin, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			sin,  0.0f,  cos, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f, };
+		Matrix4X4FT result(16, tempElem);
+		VectorMultiMatrix(vec, result);
+	}
+
+	template <template<int, typename> class TT = Vector, int count, typename T>
+	void RotateXAxis(TT<count, T>& vec, const T angle)
+	{
+		float cos = cosf(angle), sin = sinf(angle);
+		float tempElem[] = { 1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f,  cos, sin, 0.0f,
+			0.0f, -sin,  cos, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f, };
+		Matrix4X4FT result(16, tempElem);
+		VectorMultiMatrix(vec, result);
+	}
+
+	template<template<int, int, typename> class TT = Matrix>
+	void RotateAxis(Vector4FT& vec, Vector4FT& axis, const float angle)
+	{
+		float cos = cosf(angle), sin = sinf(angle), x = axis.element[0], y = axis.element[1], z = axis.element[2];
+		float tempElem[] = { cos + x * x * (1.0f - cos), x * y * (1.0f - cos) + z * sin,  x * z * (1.0f - cos) - y * sin, 0.0f,
+			x * y * (1.0f - cos) - z * sin, cos + y * y * (1.0f - cos), y * z * (1.0f - cos) + x * sin, 0.0f,
+			x * z * (1.0f - cos) + y * sin, y * z * (1.0f - cos) - x * sin, cos + z * z * (1.0f - cos), 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f, };
+
+		Matrix4X4FT result(16, tempElem);
+		VectorMultiMatrix(vec, result);
+	}
+
 	template<template<int, int, typename> class TT = Matrix>
 	Matrix4X4FT MatrixRotationZ(const float angle)
 	{
@@ -608,18 +663,18 @@ namespace Mathmatic
 	}
 
 	template<template<int, int, typename> class TT = Matrix>
-	Matrix4X4FT BuildViewMatrix(const Vector3FT position, const Vector3FT lookAt, const Vector3FT up)
+	Matrix4X4FT BuildViewMatrix(const Vector4FT position, const Vector4FT lookAt, const Vector4FT up)
 	{
-		Vector3FT axisZ = vectorNormalize(lookAt - position);
-		Vector3FT axisX = vectorNormalize(vector3CrossProduct(up, axisZ));
-		Vector3FT axisY = vectorNormalize(vector3CrossProduct(axisZ, axisX));
-		float translZ = -DotProduct(axisZ, position);// the position vector in the camera view matrix is the opposite direction of that in the world matrix.
-		float translY = -DotProduct(axisY, position);
-		float translX = -DotProduct(axisX, position);
-		Matrix4X4FT viewMaitrx = {	axisX.element[0],axisX.element[1],axisX.element[2],0.0f,
-									axisY.element[0],axisY.element[1],axisY.element[2],0.0f,
-									axisZ.element[0],axisZ.element[1],axisZ.element[2],0.0f,
-									translX,		translY,		  translZ,		   1.0f};
+		Vector4FT axisFront = vectorNormalize(lookAt - position);
+		Vector4FT axisRight = vectorNormalize(vectorCrossProduct(up, axisFront));
+		Vector4FT axisUp = vectorNormalize(vectorCrossProduct(axisRight, axisFront));
+		float translright = -DotProduct(axisRight, position);// the position vector in the camera view matrix is the opposite direction of that in the world matrix.
+		float translUp = -DotProduct(axisUp, position);
+		float translFront = -DotProduct(axisFront, position);
+		Matrix4X4FT viewMaitrx = { axisRight.element[0],axisUp.element[0],axisFront.element[0],0.0f,
+									axisRight.element[1],axisUp.element[1],axisFront.element[1],0.0f,
+									axisRight.element[2],axisUp.element[2],axisFront.element[2],0.0f,
+									translright,		translUp,		  translFront,		   1.0f};
 		return viewMaitrx;
 	}
 

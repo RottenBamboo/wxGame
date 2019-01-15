@@ -21,6 +21,8 @@
 
 #define SUNLIGHT_COUNT (int)1
 #define CONSTANTMATRIX_COUNT (int)1
+#define GAMEPAD_LEFT_THUMB_DEADZONE 16354 
+#define GAMEPAD_RIGHT_THUMB_DEADZONE 16354
 
 using namespace DirectX;
 using namespace Mathmatic;
@@ -62,14 +64,14 @@ namespace wxGame {
 			Matrix4X4FT linearTransMatrix;
 			Matrix4X4FT viewMatrix;
 			Matrix4X4FT perspectiveMatrix;
-			Matrix4X4FT rotatMatrix;
+			Matrix4X4FT finalMatrix;
 
 			wxConstBuffer()// :rotatYMatrix(0),projMatrix(0),perspectiveMatrix(0), lightMaitrx(0)
 			{
 				MatrixIdentity(linearTransMatrix);
 				MatrixIdentity(viewMatrix);
 				MatrixIdentity(perspectiveMatrix);
-				MatrixIdentity(rotatMatrix);
+				MatrixIdentity(finalMatrix);
 			}
 		};
 
@@ -152,6 +154,7 @@ namespace wxGame {
 		int m_textureSRVCount;
 		int m_MaterialCount;
 		int m_TypedDescriptorSize;
+		DWORD m_controllerState;
 
 		void LoadPipeline();
 		void LoadAssets();
@@ -167,7 +170,15 @@ namespace wxGame {
 		void PopulateCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
+		void CheckControllerInput(void);
 		int	GetSceneGeometryNodeCount();
+
+		float m_cameraMoveBaseSpeed = 0.5f;
+		float m_cameraRotationSpeed = 0.015f;
+		Vector4FT m_defaultCameraPosition = {{ 0.f,-2,-50.f,1.f }};
+		Vector4FT m_defaultLookAt = { 0,0,0.f,1.f };
+		Vector4FT m_defaultUp = { 0.f,1.f,0.f,0.f };
+		Vector4FT cameraDistance = { 0.f,0.f,0.f,1.f};
 	};
 
 	extern SceneManager* g_pSceneManager;

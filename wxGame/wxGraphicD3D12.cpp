@@ -1,18 +1,9 @@
-//*********************************************************
-//
-// Copyright (c) Microsoft. All rights reserved.
-// This code is licensed under the MIT License (MIT).
-// THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
-// ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
-// IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
-// PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
-//
-//*********************************************************
-
+#pragma once
 #include "stdafx.h"
 #include "wxGraphicD3D12.h"
 #include "SceneManager.h"
 #define ASSET_DIRECTORY	"../wxAsset/"
+
 wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	GraphicD3D12(width, height, name),
 	m_frameIndex(0),
@@ -20,6 +11,8 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
 	m_rtvDescriptorSize(0)
 {
+	constBuff.viewMatrix = BuildViewMatrix( m_defaultCameraPosition, m_defaultLookAt, m_defaultUp);
+	constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 100.0f);
 }
 
 void wxGraphicD3D12::OnInit()
@@ -507,6 +500,7 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 void wxGraphicD3D12::OnUpdate()
 {
 	UpdateConstantBuffer();
+	CheckControllerInput();
 }
 
 // Render the scene.
@@ -606,17 +600,18 @@ void wxGraphicD3D12::WaitForPreviousFrame()
 
 void wxGraphicD3D12::UpdateConstantBuffer(void)
 {
-	angleAxisY -= 0.01f;
+	/*angleAxisY -= 0.01f;
 	if (angleAxisY < -360.f)
 	{
 		angleAxisY = 0.f;
 	}
 	int k = static_cast<int>(angleAxisY) / 360;
-	angleAxisY = angleAxisY + k * 360;
+	angleAxisY = angleAxisY + k * 360;*/
+	//angleAxisY = 0;
 	//wxConstBuffer matResult;
-	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
-	constBuff.viewMatrix = BuildViewMatrix({ 0,-2,-50.f }, { 0,0,0.f }, { 0.f,1.f,0.f });
-	constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 100.0f);
+	constBuff.finalMatrix = MatrixMultiMatrix(constBuff.viewMatrix, constBuff.perspectiveMatrix);
+	//constBuff.viewMatrix = BuildViewMatrix({ 0,-2,-50.f }, { 0,0,0.f }, { 0.f,1.f,0.f });
+	//constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 100.0f);
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstBuffer));
 }
 
@@ -1003,4 +998,106 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	m_cbvSunLight.BufferLocation = m_sunLight->GetGPUVirtualAddress();
 	m_cbvSunLight.SizeInBytes = ALIGN_256(sizeof(wxLight));
 	m_device->CreateConstantBufferView(&m_cbvSunLight, cbvHandle);
+}
+
+void wxGraphicD3D12::CheckControllerInput()
+{
+	DWORD dwResult = 0;
+	for (DWORD i = 0; i < XUSER_MAX_COUNT; i++)
+	{
+		XINPUT_STATE state;
+		ZeroMemory(&state, sizeof(XINPUT_STATE));
+
+		// Simply get the state of the controller from XInput.
+		dwResult = XInputGetState(i, &state);
+
+		if (dwResult == ERROR_SUCCESS)
+		{
+			// Controller is connected 
+			if (state.dwPacketNumber != m_controllerState)
+			{
+				float LX = state.Gamepad.sThumbLX;
+				float LY = state.Gamepad.sThumbLY;
+
+				float RX = state.Gamepad.sThumbRX;
+				float RY = state.Gamepad.sThumbRY;
+				if (RX != 0 || RY != 0)
+				{
+			
+
+					float magnitudeR = sqrt(RX*RX + RY * RY);
+					if (RX * RX < 9000000)
+					{
+						RX = 0;
+					}
+					if (RY * RY < 9000000)
+					{
+						RY = 0;
+					}
+
+					float normalizedRX = RX / magnitudeR;
+					float normalizedRY = RY / magnitudeR;
+
+					Vector4FT viewDir = m_defaultLookAt - m_defaultCameraPosition;
+					Vector4FT result = { viewDir.element[0], viewDir.element[1], viewDir.element[2], 0.f };
+					float length = vectorLength(viewDir);
+					viewDir = vectorNormalize(viewDir);
+					RotateYAxis(viewDir, normalizedRX * m_cameraRotationSpeed);
+					Vector4FT tempRightAxis = GetRightAxis(viewDir, Vector4FT({ 0.f,1.f,0.f ,0.f}));
+					RotateAxis(viewDir, tempRightAxis, normalizedRY * m_cameraRotationSpeed);
+					viewDir = viewDir * length;
+					m_defaultLookAt = viewDir + m_defaultCameraPosition;
+					float normalizedMagnitude = 0;
+				}
+
+				if (LX != 0 || LY != 0)
+				{
+					//determine how far the controller is pushed
+					float magnitude = sqrt(LX*LX + LY * LY);
+
+					if (LX * LX < 9000000)
+					{
+						LX = 0;
+					}
+					if (LY * LY < 9000000)
+					{
+						LY = 0;
+					}
+					//determine the direction the controller is pushed
+					float normalizedLX = LX / magnitude;
+					float normalizedLY = LY / magnitude;
+
+					Vector4FT viewDir = m_defaultLookAt - m_defaultCameraPosition; 
+					Vector4FT rightDir = GetRightAxis(viewDir, Vector4FT({ 0.f,1.f,0.f,0.f }));
+					Vector4FT velocity = vectorNormalize(viewDir) * normalizedLY + rightDir * normalizedLX;
+					cameraDistance = velocity * m_cameraMoveBaseSpeed;
+					m_defaultLookAt += cameraDistance;
+					m_defaultCameraPosition += cameraDistance;
+				}
+				////check if the controller is outside a circular dead zone
+				//if (magnitude > GAMEPAD_LEFT_THUMB_DEADZONE)
+				//{
+				//	//clip the magnitude at its expected maximum value
+				//	if (magnitude > 32767) magnitude = 32767;
+
+				//	//adjust magnitude relative to the end of the dead zone
+				//	magnitude -= GAMEPAD_LEFT_THUMB_DEADZONE;
+
+				//	//optionally normalize the magnitude with respect to its expected range
+				//	//giving a magnitude value of 0.0 to 1.0
+				//	normalizedMagnitude = magnitude / (32767 - GAMEPAD_LEFT_THUMB_DEADZONE);
+				//}
+				//else //if the controller is in the deadzone zero out the magnitude
+				//{
+				//	magnitude = 0.0;
+				//	normalizedMagnitude = 0.0;
+				//}
+				constBuff.viewMatrix = BuildViewMatrix(m_defaultCameraPosition, m_defaultLookAt, { 0.f,1.f,0.f });
+			}
+		}
+		else
+		{
+			// Controller is not connected 
+		}
+	}
 }

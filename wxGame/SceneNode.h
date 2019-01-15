@@ -99,7 +99,7 @@ namespace wxGame
 		void AddGeometryObjectRef(const char* object) { m_GeometryObjs = object; }
 		void AddMaterialRef(const std::string& key) { m_Materials.push_back(key); }
 		std::string GetGeometryObjectRef() { return m_GeometryObjs; }
-		std::string GetGeometryMaterialName(size_t pos) { return m_Materials[pos]; }
+		std::string GetGeometryMaterialName(size_t pos) { if (!m_Materials.empty()) return m_Materials[pos]; return ""; }
 	};
 
 	class SceneLightNode :public SceneNode<SceneObjectLight>
