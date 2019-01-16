@@ -107,11 +107,14 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="shaders.hlsl">
+    <FxCompile Include="lighting.hlsl">
       <Filter>Shader Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="lighting.hlsl">
+    </FxCompile>
+    <FxCompile Include="ps.hlsl">
       <Filter>Shader Files</Filter>
-    </CustomBuild>
+    </FxCompile>
+    <FxCompile Include="vs.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

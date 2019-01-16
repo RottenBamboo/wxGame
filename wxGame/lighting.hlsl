@@ -44,9 +44,7 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
 	return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;
 }
 
-//---------------------------------------------------------------------------------------
-// Evaluates the lighting equation for directional lights.
-//---------------------------------------------------------------------------------------
+// Evaluates directional lights.
 float3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEye)
 {
 	// The light vector aims opposite the direction the light rays travel.

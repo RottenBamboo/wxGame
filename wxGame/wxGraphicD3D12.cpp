@@ -214,8 +214,8 @@ void wxGraphicD3D12::LoadAssets()
 #else
 		UINT compileFlags = 0;
 #endif
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shaders.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shaders.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 
 		// Define the vertex input layout.
 		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -357,7 +357,7 @@ void wxGraphicD3D12::LoadAssets()
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
 		constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
-		constantBufferView.SizeInBytes = sizeof(wxConstBuffer);
+		constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxConstBuffer));
 		m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);
 	}
 
@@ -600,18 +600,17 @@ void wxGraphicD3D12::WaitForPreviousFrame()
 
 void wxGraphicD3D12::UpdateConstantBuffer(void)
 {
-	/*angleAxisY -= 0.01f;
+	angleAxisY -= 0.01f;
 	if (angleAxisY < -360.f)
 	{
 		angleAxisY = 0.f;
 	}
 	int k = static_cast<int>(angleAxisY) / 360;
-	angleAxisY = angleAxisY + k * 360;*/
+	angleAxisY = angleAxisY + k * 360;
 	//angleAxisY = 0;
-	//wxConstBuffer matResult;
-	constBuff.finalMatrix = MatrixMultiMatrix(constBuff.viewMatrix, constBuff.perspectiveMatrix);
-	//constBuff.viewMatrix = BuildViewMatrix({ 0,-2,-50.f }, { 0,0,0.f }, { 0.f,1.f,0.f });
-	//constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 100.0f);
+	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
+	constBuff.cameraPos = m_defaultCameraPosition;
+	constBuff.viewPos = m_defaultLookAt;
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstBuffer));
 }
 
@@ -982,9 +981,9 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantSunLightDesc, \
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
-	m_sunLightBuff.Direction = Vector3FT({ -1.f,-1.f,-1.f });
+	m_sunLightBuff.Direction = Vector3FT({ -1.f,-1.f,1.f });
 	m_sunLightBuff.Position = Vector3FT({ 100.f,100.f,100.f });
-	m_sunLightBuff.Strength = Vector3FT({ 0.8f,0.8f,0.8f });
+	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
 	m_sunLightBuff.FalloffStart = 0.f;
 	m_sunLightBuff.SpotPower = 0.f;

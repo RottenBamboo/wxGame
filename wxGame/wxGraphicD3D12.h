@@ -64,14 +64,16 @@ namespace wxGame {
 			Matrix4X4FT linearTransMatrix;
 			Matrix4X4FT viewMatrix;
 			Matrix4X4FT perspectiveMatrix;
-			Matrix4X4FT finalMatrix;
+			Matrix4X4FT rotatMatrix;
+			Vector4FT cameraPos;
+			Vector4FT viewPos;
 
 			wxConstBuffer()// :rotatYMatrix(0),projMatrix(0),perspectiveMatrix(0), lightMaitrx(0)
 			{
 				MatrixIdentity(linearTransMatrix);
 				MatrixIdentity(viewMatrix);
 				MatrixIdentity(perspectiveMatrix);
-				MatrixIdentity(finalMatrix);
+				MatrixIdentity(rotatMatrix);
 			}
 		};
 
