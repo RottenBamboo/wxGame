@@ -3,7 +3,6 @@
 
 namespace wxGame
 {
-	SceneManager* g_pSceneManager = new SceneManager;
 	std::vector<SceneManager*> g_vecpSceneManager;
 	template<typename T> class ParseText
 	{

@@ -59,21 +59,30 @@ namespace wxGame {
 			Vector3FT Normal;
 		};
 
-		struct wxConstBuffer
+		struct wxObjConst
 		{
 			Matrix4X4FT linearTransMatrix;
+			wxObjConst()
+			{
+				MatrixIdentity(linearTransMatrix);
+			}
+		};
+
+		struct wxConstMatrix
+		{
 			Matrix4X4FT viewMatrix;
 			Matrix4X4FT perspectiveMatrix;
 			Matrix4X4FT rotatMatrix;
 			Vector4FT cameraPos;
 			Vector4FT viewPos;
 
-			wxConstBuffer()// :rotatYMatrix(0),projMatrix(0),perspectiveMatrix(0), lightMaitrx(0)
+			wxConstMatrix()// :rotatYMatrix(0),projMatrix(0),perspectiveMatrix(0), lightMaitrx(0)
 			{
-				MatrixIdentity(linearTransMatrix);
 				MatrixIdentity(viewMatrix);
 				MatrixIdentity(perspectiveMatrix);
 				MatrixIdentity(rotatMatrix);
+				cameraPos = { 0.f,0.f,0.f,1.f };
+				viewPos = { 0.f,0.f,1.f };
 			}
 		};
 
@@ -101,10 +110,12 @@ namespace wxGame {
 		};
 
 		void* m_pCBDataBegin;			//constant buffer data pointer
-		wxConstBuffer constBuff;
+		wxConstMatrix constBuff;
 		void* m_pwxMatDataBegin;
 		wxLight m_sunLightBuff;
-		void* m_psunLightDataBegin;
+		void* m_pSunLightDataBegin;
+		wxObjConst m_objConst;
+		void* m_pObjConstDataBegin;
 
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
@@ -114,7 +125,6 @@ namespace wxGame {
 		ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 		ComPtr<ID3D12Resource> m_depthStencil;
 		ComPtr<ID3D12Resource> m_constantBuffer;
-		ComPtr<ID3D12Resource> m_constantMaterial;
 		ComPtr<ID3D12Resource> m_sunLight;
 		ComPtr<ID3D12Resource> m_indexBuffer;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
@@ -143,11 +153,13 @@ namespace wxGame {
 		unsigned int m_numIndices;
 		std::vector<unsigned int> m_vec_numIndices;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_matRes;
-		std::vector<D3D12_CONSTANT_BUFFER_VIEW_DESC> m_vec_cbvMat;
 		std::vector<wxMaterial> m_vec_matStut;
+		std::vector<ComPtr<ID3D12Resource>> m_vec_objConstRes;
+		std::vector<ComPtr<ID3D12Resource>> m_vec_objConstResUploadHeap;
+		std::vector<wxObjConst> m_vec_objConstStut;
 		D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvSunLight;
+
 		float angleAxisY;
-		D3D12_SHADER_RESOURCE_VIEW_DESC srv;
 		// Synchronization objects.
 		UINT m_frameIndex;
 		HANDLE m_fenceEvent;
@@ -169,6 +181,7 @@ namespace wxGame {
 		void CreateIndexBuffer(int&, size_t);
 		void CreateConstantMaterialBuffer(std::vector<wxMaterial>&);
 		void CreateSunLightBuffer();
+		void CreateObjConst(std::vector<wxObjConst>&);
 		void PopulateCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
@@ -183,6 +196,5 @@ namespace wxGame {
 		Vector4FT cameraDistance = { 0.f,0.f,0.f,1.f};
 	};
 
-	extern SceneManager* g_pSceneManager;
 	extern std::vector<SceneManager*> g_vecpSceneManager;
 }
