@@ -6,6 +6,7 @@
 #define DOU_PI 3.1415926535898f * 2.0f
 #define SET_ROW	1;
 #define SET_COL	0;
+#define MATH_ABS(x) (x > 0 ? x : -x)
 
 namespace Mathmatic
 {
@@ -163,7 +164,7 @@ namespace Mathmatic
 		return sum;
 	}
 
-	template<template<int, typename> class TT = Vector, int count, typename T>
+	template <template<int, typename> class TT = Vector, int count, typename T>
 	TT<count, T> vectorCrossProduct(const TT<count, T>& vec1, const TT<count, T>& vec2)
 	{
 		TT<count, T> result;
@@ -688,4 +689,30 @@ namespace Mathmatic
 		 0.0f, 0.0f, ((0.f - nearPlane) * FarPlane) / (FarPlane - nearPlane), 0.0f };
 		return perspectiveMatrix;
 	}
+
+	/*template<template<int, int, typename> class TT = Matrix>
+	Matrix4X4FT BuildOthographicMatrixForLH(const float leftPlane, const float rightPlane, const float topPlane, const float bottomPlane, const float nearPlane, const float farPlane)
+	{
+		float width = MATH_ABS(right - left);
+		float height = MATH_ABS(topPlane - bottomPlane);
+		Matrix4X4 othographicMatrix = {
+		2 / width, 0.f, 0.f, 0.f,
+		0, 2 / height, 0.f, 0.f,
+		0.f, 0.f, 1 / (farPlane - nearPlane), 0.f,
+		0.f, 0.f, nearPlane / (nearPlane - farPlane), 1.f
+		};
+		return othographicMatrix;
+	}
+
+	template<template<int, int, typename> class TT = Matrix>
+	Matrix4X4FT BuildTextureMatrix()
+	{
+		return MAtrix4X4 textureMatrix = {
+		0.5f, 0.f, 0.f, 0.f,
+		0.f, -0.5f, 0.f, 0.f,
+		0.f, 0.f, 1.f, 0.f,
+		0.5f, 0.5f, 0.f, 1.f
+		}
+	}*/
+
 }
