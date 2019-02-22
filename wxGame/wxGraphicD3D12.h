@@ -57,6 +57,7 @@ namespace wxGame {
 			Matrix4X4FT viewMatrix;
 			Matrix4X4FT perspectiveMatrix;
 			Matrix4X4FT rotatMatrix;
+			XMMATRIX shadowMatrix;
 			Vector4FT cameraPos;
 			Vector4FT viewPos;
 
@@ -65,6 +66,7 @@ namespace wxGame {
 				MatrixIdentity(viewMatrix);
 				MatrixIdentity(perspectiveMatrix);
 				MatrixIdentity(rotatMatrix);
+				//MatrixIdentity(shadowMatrix);
 				cameraPos = { 0.f,0.f,0.f,1.f };
 				viewPos = { 0.f,0.f,1.f };
 			}
@@ -117,7 +119,8 @@ namespace wxGame {
 		ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 		ComPtr<ID3D12DescriptorHeap> m_srvHeap;
 		ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
-		ComPtr<ID3D12PipelineState> m_pipelineState;
+		ComPtr<ID3D12PipelineState> m_defaultPipelineState;
+		ComPtr<ID3D12PipelineState> m_shadowPipelineState;
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		UINT m_rtvDescriptorSize;
 
@@ -156,6 +159,7 @@ namespace wxGame {
 
 		void LoadPipeline();
 		void LoadAssets();
+		void CreatePipelineStateObject();
 		void RetrievalAssetDirectory();
 		void CreateTexture(std::vector<std::string>&);
 		void ParserDataFromScene(std::vector<std::string>&);

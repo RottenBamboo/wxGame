@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "GraphicD3D12.h"
