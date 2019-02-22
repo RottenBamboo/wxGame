@@ -15,13 +15,6 @@ cbuffer cmatrix:register(b1)
 	float4 viewPos;
 }
 
-//cbuffer cmaterial:register(b0)
-//{
-//	float4 diffuse;
-//	float3 fresnelR0;
-//	float  roughness;
-//}
-
 struct objMaterial
 {
 	float4 mdiffuse;
@@ -47,6 +40,6 @@ SamplerState g_sampler : register(s0);
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-	float4 rgbaColor = { 0.15f, 0.15f, 0.15f, 0.5f };
+	float4 rgbaColor = { 0.1f, 0.1f, 0.1f, 0.9f };
 	return rgbaColor;
 }

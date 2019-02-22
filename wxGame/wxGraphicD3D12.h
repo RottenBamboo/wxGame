@@ -80,7 +80,7 @@ namespace wxGame {
 			wxMaterial()
 			{
 				diffuse = Vector4FT({ 1.0f, 1.0f, 1.0f, 1.0f });
-				Roughness = 0.25f;
+				Roughness = 0.1f;
 				FresnelR0 = Vector3FT({0.01f, 0.01f, 0.01f });
 			}
 		};

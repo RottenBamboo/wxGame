@@ -16,13 +16,6 @@ cbuffer cmatrix:register(b1)
 	float4 viewPos;
 }
 
-//cbuffer cmaterial:register(b0)
-//{
-//	float4 diffuse;
-//	float3 fresnelR0;
-//	float  roughness;
-//}
-
 struct objMaterial
 {
 	float4 mdiffuse;
@@ -51,7 +44,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 	objMaterial objM = g_objMaterial[0];
 	const float shininess = 1.0f - objM.mroughness;
 	float4 rgbaColor = g_texture.Sample(g_sampler, input.uv);
-	float4 ambient = { 0.35f, 0.35f, 0.35f, 1.f };
+	float4 ambient = { 0.15f, 0.15f, 0.15f, 1.f };
 	ambient = ambient * rgbaColor;
 	Material mat = { rgbaColor, objM.mfresnelR0, shininess };
 	Light light = { Strength, FalloffStart, Direction, FalloffEnd, Position, SpotPower };

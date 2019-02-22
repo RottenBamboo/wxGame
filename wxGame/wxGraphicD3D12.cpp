@@ -188,28 +188,32 @@ void wxGraphicD3D12::LoadAssets()
 	depthStencilDesc.Width = m_width;
 	depthStencilDesc.Height = m_height;
 	depthStencilDesc.DepthOrArraySize = 1;
-	depthStencilDesc.MipLevels = 0;
-	depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	depthStencilDesc.MipLevels = 1;
+	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 	depthStencilDesc.SampleDesc.Count = 1;
 	depthStencilDesc.SampleDesc.Quality = 0;
 	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
 	D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
-	depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+	depthOptimizedClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
 	depthOptimizedClearValue.DepthStencil.Stencil = 0;
 
 	m_device->CreateCommittedResource(&dsHeapProperties, D3D12_HEAP_FLAG_NONE, &depthStencilDesc, \
-		D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, __uuidof(m_depthStencil), (void**)&m_depthStencil);
+		D3D12_RESOURCE_STATE_COMMON, &depthOptimizedClearValue, __uuidof(m_depthStencil), (void**)&m_depthStencil);
 
 	// Create the depth stencil view.
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvBufferDesc = {};
-	dsvBufferDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	dsvBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	dsvBufferDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	dsvBufferDesc.Flags = D3D12_DSV_FLAG_NONE;
+	dsvBufferDesc.Texture2D.MipSlice = 0;
 	// Create DepthStencilView
 	m_device->CreateDepthStencilView(m_depthStencil.Get(), &dsvBufferDesc, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_depthStencil.Get(),
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	CreateSunLightBuffer();
 
@@ -397,26 +401,43 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.SampleDesc.Count = 1;
-		psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_defaultPipelineState)));
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 
-		D3D12_DEPTH_STENCIL_DESC shadowDepthStencil = defaultDepthStencil;
-		defaultDepthStencil.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP; defaultDepthStencil.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		defaultDepthStencil.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR; defaultDepthStencil.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+		D3D12_DEPTH_STENCIL_DESC shadowDepthStencil;
+		shadowDepthStencil.DepthEnable = true;
+		shadowDepthStencil.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		shadowDepthStencil.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		shadowDepthStencil.StencilEnable = true;
+		shadowDepthStencil.StencilReadMask = 0xff;
+		shadowDepthStencil.StencilWriteMask = 0xff;
+		shadowDepthStencil.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP; shadowDepthStencil.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+		shadowDepthStencil.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR; shadowDepthStencil.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
 		// We are not rendering backfacing polygons, so these settings do not // matter. 
-		defaultDepthStencil.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-		defaultDepthStencil.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		defaultDepthStencil.BackFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
-		defaultDepthStencil.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+		shadowDepthStencil.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP; shadowDepthStencil.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+		shadowDepthStencil.BackFace.StencilPassOp = D3D12_STENCIL_OP_INCR; shadowDepthStencil.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
 
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowPsoDesc = {};
-		psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-		psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-		psoDesc.DepthStencilState = defaultDepthStencil;
-		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowPipelineState)));
+		D3D12_RENDER_TARGET_BLEND_DESC shadowBlendDesc;
+		shadowBlendDesc.BlendEnable = true;
+		shadowBlendDesc.LogicOpEnable = false;
+		shadowBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+		shadowBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+		shadowBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+		shadowBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+		shadowBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+		shadowBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+		shadowBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+		shadowBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowPsoDesc = psoDesc;
+		shadowPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
+		shadowPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
+		shadowPsoDesc.DepthStencilState = shadowDepthStencil;
+		shadowPsoDesc.BlendState.RenderTarget[0] = shadowBlendDesc;
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&m_shadowPipelineState)));
 }
 
 void wxGraphicD3D12::PopulateCommandList()
@@ -445,8 +466,8 @@ void wxGraphicD3D12::PopulateCommandList()
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-	m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-	m_commandList->ClearDepthStencilView(m_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
+	m_commandList->ClearDepthStencilView(m_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
 	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -455,6 +476,7 @@ void wxGraphicD3D12::PopulateCommandList()
 	srvConstantBuff.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * 3);
 	m_commandList->SetGraphicsRootDescriptorTable(3, srvConstantBuff);
 
+	m_commandList->OMSetStencilRef(1);
 	m_commandList->SetPipelineState(m_defaultPipelineState.Get());
 	// Record commands.
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -475,8 +497,8 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
-	m_commandList->SetPipelineState(m_shadowPipelineState.Get());
 	m_commandList->OMSetStencilRef(0);
+	m_commandList->SetPipelineState(m_shadowPipelineState.Get());
 	// Record commands.
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	//draw objects
@@ -564,6 +586,12 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	constBuff.cameraPos = m_defaultCameraPosition;
 	constBuff.viewPos = m_defaultLookAt;
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
+
+	//m_vec_objConstStut[1].linearTransMatrix = MatrixMultiMatrix(m_vec_objConstStut[1].linearTransMatrix,constBuff.rotatMatrix);
+	//D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
+	//m_vec_objConstRes[1]->Map(0, &readRange, &m_pObjConstDataBegin);
+	//memcpy(m_pObjConstDataBegin, &m_vec_objConstStut[1], sizeof(wxObjConst));
+
 }
 
 void wxGraphicD3D12::LoadDataFromOGEX(std::vector<std::string>& title)
@@ -1105,7 +1133,7 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantSunLightDesc, \
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
-	m_sunLightBuff.Direction = Vector3FT({ -1.f,-1.f,1.f });
+	m_sunLightBuff.Direction = Vector3FT({ -1.f,1.f,1.f });
 	m_sunLightBuff.Position = Vector3FT({ 100.f,100.f,100.f });
 	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
