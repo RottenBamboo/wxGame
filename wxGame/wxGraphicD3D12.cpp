@@ -1162,6 +1162,12 @@ void wxGraphicD3D12::CheckControllerInput()
 		// Simply get the state of the controller from XInput.
 		dwResult = XInputGetState(i, &state);
 
+		if (state.dwPacketNumber == VK_PAD_LTRIGGER)
+		{
+			int abc = 1;
+			int c = 2;
+			int d = abc + c;
+		}
 		if (dwResult == ERROR_SUCCESS)
 		{
 			// Controller is connected 

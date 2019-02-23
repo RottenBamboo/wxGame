@@ -1,2 +1,2 @@
 # wxGame
-try to do something with DirectX12
+directX12 demo
