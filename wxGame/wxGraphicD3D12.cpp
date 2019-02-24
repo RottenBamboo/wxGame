@@ -6,10 +6,26 @@
 
 wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	GraphicD3D12(width, height, name),
+	m_pCBDataBegin(nullptr),			//constant buffer data pointer
+	constBuff(),
+	m_pwxMatDataBegin(nullptr),
+	m_sunLightBuff(),
+	m_pSunLightDataBegin(nullptr),
+	m_objConst(),
+	m_pObjConstDataBegin(nullptr),
+	m_numIndices(0),
+	angleAxisY(0.f),
 	m_frameIndex(0),
+	m_fenceEvent(HANDLE()),
 	m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
 	m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
-	m_rtvDescriptorSize(0)
+	m_rtvDescriptorSize(0),
+	m_cameraMoveBaseSpeed(0.5f),
+	m_cameraRotationSpeed(0.015f),
+	m_defaultCameraPosition({ 0.f,2,50.f,1.f }),
+	m_defaultLookAt({ 0,0,0.f,0.f }),
+	m_defaultUp({ 0.f,1.f,0.f,0.f }),
+	cameraDistance({ 0.f,0.f,0.f,1.f })
 {}
 
 void wxGraphicD3D12::OnInit()
@@ -533,10 +549,10 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	////int k = static_cast<int>(angleAxisY) / 360;
 	////angleAxisY = angleAxisY + k * 360;
 	////angleAxisY = 0;
-	//constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
-	//constBuff.cameraPos = m_defaultCameraPosition;
-	//constBuff.viewPos = m_defaultLookAt;
-	//memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
+	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
+	constBuff.cameraPos = m_defaultCameraPosition;
+	constBuff.viewPos = m_defaultLookAt;
+	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
 
 	//m_vec_objConstStut[1].linearTransMatrix = MatrixMultiMatrix(m_vec_objConstStut[1].linearTransMatrix,constBuff.rotatMatrix);
 	//D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
