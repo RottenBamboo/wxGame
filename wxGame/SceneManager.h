@@ -37,5 +37,6 @@ namespace wxGame {
 		bool m_bAnimationQueued = false;
 		bool m_bDirtyFlag = false;
 	};
+	extern std::vector<SceneManager*> g_vecpSceneManager;
 }
 

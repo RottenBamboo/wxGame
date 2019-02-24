@@ -668,7 +668,8 @@ namespace Mathmatic
 	{
 		Vector4FT axisFront = vectorNormalize(lookAt - position);
 		Vector4FT axisRight = vectorNormalize(vectorCrossProduct(up, axisFront));
-		Vector4FT axisUp = vectorNormalize(vectorCrossProduct(axisRight, axisFront));
+		Vector4FT axisUp = vectorNormalize(vectorCrossProduct(axisFront, axisRight)); //According to the left hand rule, to make the axisFront be x axis, make the axisRight be y axis.
+																					//then axisUp will be the truly up direction.
 		float translright = -DotProduct(axisRight, position);// the position vector in the camera view matrix is the opposite direction of that in the world matrix.
 		float translUp = -DotProduct(axisUp, position);
 		float translFront = -DotProduct(axisFront, position);

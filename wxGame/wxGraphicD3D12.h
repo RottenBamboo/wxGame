@@ -170,6 +170,7 @@ namespace wxGame {
 		void CreateConstantMaterialBuffer(std::vector<wxMaterial>&);
 		void CreateSunLightBuffer();
 		void CreateObjConst(std::vector<wxObjConst>&);
+		void CreateConstantMatrix();
 		void PopulateCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
@@ -178,11 +179,10 @@ namespace wxGame {
 
 		float m_cameraMoveBaseSpeed = 0.5f;
 		float m_cameraRotationSpeed = 0.015f;
-		Vector4FT m_defaultCameraPosition = {{ 0.f,-2,-50.f,1.f }};
-		Vector4FT m_defaultLookAt = { 0,0,0.f,1.f };
+		Vector4FT m_defaultCameraPosition = {{ 0.f,2,50.f,1.f }};
+		Vector4FT m_defaultLookAt = { 0,0,0.f,0.f };
 		Vector4FT m_defaultUp = { 0.f,1.f,0.f,0.f };
 		Vector4FT cameraDistance = { 0.f,0.f,0.f,1.f};
 	};
 
-	extern std::vector<SceneManager*> g_vecpSceneManager;
 }

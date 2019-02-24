@@ -10,15 +10,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
 	m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
 	m_rtvDescriptorSize(0)
-{
-	constBuff.viewMatrix = BuildViewMatrix( m_defaultCameraPosition, m_defaultLookAt, m_defaultUp);
-	constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 100.0f);
-	XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.f, 0.0f, 0.0f); // xz planeVector3FT({ -1.f,-1.f,1.f });
-	XMVECTOR toMainLight = -XMVectorSet(1.f, -1.f, -1.f, 0.0f);
-	XMMATRIX S = XMMatrixShadow(shadowPlane, toMainLight);
-	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, -0.001f, 0.0f);
-	constBuff.shadowMatrix = S * shadowOffsetY;
-}
+{}
 
 void wxGraphicD3D12::OnInit()
 {
@@ -216,48 +208,7 @@ void wxGraphicD3D12::LoadAssets()
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	CreateSunLightBuffer();
-
-	{
-		// Create CBV resource and bind it to the pipeline by ConstantBufferView.
-		//resource Description for constant buffer
-		D3D12_HEAP_PROPERTIES cbvHeapProperties;
-		cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-		cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		cbvHeapProperties.CreationNodeMask = 1;
-		cbvHeapProperties.VisibleNodeMask = 1;
-
-		D3D12_RESOURCE_DESC constantBufferDesc;
-		constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		constantBufferDesc.Alignment = 0;
-		constantBufferDesc.Width = sizeof(wxConstMatrix);
-		constantBufferDesc.Height = 1;
-		constantBufferDesc.DepthOrArraySize = 1;
-		constantBufferDesc.MipLevels = 1;
-		constantBufferDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
-		constantBufferDesc.SampleDesc.Count = 1;
-		constantBufferDesc.SampleDesc.Quality = 0;
-		constantBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		constantBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantBufferDesc, \
-			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_constantBuffer), (void**)&m_constantBuffer);
-
-		// Map the constant buffers. Note that unlike D3D11, the resource 
-		// does not need to be unmapped for use by the GPU. In this sample, 
-		// the resource stays 'permenantly' mapped to avoid overhead with 
-		// mapping/unmapping each frame.
-		D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
-		m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
-
-		D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-		cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * 3 + SUNLIGHT_COUNT);
-
-		D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
-		constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
-		constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxConstMatrix));
-		m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
-	}
+	CreateConstantMatrix();
 
 	// Close the command list and execute it to begin the initial GPU setup.
 	ThrowIfFailed(m_commandList->Close());
@@ -501,7 +452,7 @@ void wxGraphicD3D12::PopulateCommandList()
 	m_commandList->SetPipelineState(m_shadowPipelineState.Get());
 	// Record commands.
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	//draw objects
+	//draw shadows
 	for (int i = 1; i < GetSceneGeometryNodeCount(); i++)
 	{
 		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
@@ -574,18 +525,18 @@ void wxGraphicD3D12::WaitForPreviousFrame()
 
 void wxGraphicD3D12::UpdateConstantBuffer(void)
 {
-	angleAxisY -= 0.01f;
-	if (angleAxisY < -360.f)
-	{
-		angleAxisY = 0.f;
-	}
-	int k = static_cast<int>(angleAxisY) / 360;
-	angleAxisY = angleAxisY + k * 360;
-	//angleAxisY = 0;
-	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
-	constBuff.cameraPos = m_defaultCameraPosition;
-	constBuff.viewPos = m_defaultLookAt;
-	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
+	//angleAxisY -= 0.01f;
+	//if (angleAxisY < -360.f)
+	//{
+	//	angleAxisY = 0.f;
+	//}
+	////int k = static_cast<int>(angleAxisY) / 360;
+	////angleAxisY = angleAxisY + k * 360;
+	////angleAxisY = 0;
+	//constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
+	//constBuff.cameraPos = m_defaultCameraPosition;
+	//constBuff.viewPos = m_defaultLookAt;
+	//memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
 
 	//m_vec_objConstStut[1].linearTransMatrix = MatrixMultiMatrix(m_vec_objConstStut[1].linearTransMatrix,constBuff.rotatMatrix);
 	//D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
@@ -1107,6 +1058,58 @@ void wxGraphicD3D12::CreateObjConst(std::vector<wxObjConst>& objConst)
 	}
 }
 
+void wxGraphicD3D12::CreateConstantMatrix()
+{
+	HRESULT hr;
+	// Create CBV resource and bind it to the pipeline by ConstantBufferView.
+		//resource Description for constant buffer
+	D3D12_HEAP_PROPERTIES cbvHeapProperties;
+	cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+	cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	cbvHeapProperties.CreationNodeMask = 1;
+	cbvHeapProperties.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC constantBufferDesc;
+	constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	constantBufferDesc.Alignment = 0;
+	constantBufferDesc.Width = sizeof(wxConstMatrix);
+	constantBufferDesc.Height = 1;
+	constantBufferDesc.DepthOrArraySize = 1;
+	constantBufferDesc.MipLevels = 1;
+	constantBufferDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
+	constantBufferDesc.SampleDesc.Count = 1;
+	constantBufferDesc.SampleDesc.Quality = 0;
+	constantBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	constantBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantBufferDesc, \
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_constantBuffer), (void**)&m_constantBuffer);
+
+	constBuff.viewMatrix = BuildViewMatrix(m_defaultCameraPosition, m_defaultLookAt, m_defaultUp);
+	constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 1000.0f);
+	XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.f, 0.0f, 0.0f); // xz planeVector3FT({ -1.f,-1.f,1.f });
+	XMVECTOR toMainLight = -XMVectorSet(1.f, -1.f, -1.f, 0.0f);
+	XMMATRIX S = XMMatrixShadow(shadowPlane, toMainLight);
+	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
+	constBuff.shadowMatrix = S * shadowOffsetY;
+
+	// Map the constant buffers. Note that unlike D3D11, the resource 
+	// does not need to be unmapped for use by the GPU. In this sample, 
+	// the resource stays 'permenantly' mapped to avoid overhead with 
+	// mapping/unmapping each frame.
+	D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
+	m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
+	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * 3 + SUNLIGHT_COUNT);
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
+	constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
+	constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxConstMatrix));
+	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
+}
+
 void wxGraphicD3D12::CreateSunLightBuffer()
 {
 	HRESULT hr;
@@ -1133,7 +1136,7 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantSunLightDesc, \
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
-	m_sunLightBuff.Direction = Vector3FT({ -1.f,1.f,1.f });
+	m_sunLightBuff.Direction = Vector3FT({ 1.f, -1.f, -1.f });
 	m_sunLightBuff.Position = Vector3FT({ 100.f,100.f,100.f });
 	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
@@ -1177,7 +1180,7 @@ void wxGraphicD3D12::CheckControllerInput()
 				float LY = state.Gamepad.sThumbLY;
 
 				float RX = state.Gamepad.sThumbRX;
-				float RY = state.Gamepad.sThumbRY;
+				float RY = -state.Gamepad.sThumbRY;
 				if (RX != 0 || RY != 0)
 				{
 			
@@ -1196,7 +1199,6 @@ void wxGraphicD3D12::CheckControllerInput()
 					float normalizedRY = RY / magnitudeR;
 
 					Vector4FT viewDir = m_defaultLookAt - m_defaultCameraPosition;
-					Vector4FT result = { viewDir.element[0], viewDir.element[1], viewDir.element[2], 0.f };
 					float length = vectorLength(viewDir);
 					viewDir = vectorNormalize(viewDir);
 					RotateYAxis(viewDir, normalizedRX * m_cameraRotationSpeed);
