@@ -36,8 +36,8 @@ public:
 
 	~DataBuffer()
 	{
-		delete[] m_pData;
-		m_pData = nullptr;
+			delete[] m_pData;
+			m_pData = nullptr;
 	}
 
 	const DataBuffer& operator=(const DataBuffer& rhs)

@@ -134,8 +134,8 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * 3 + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT;	//order of the srv in srvHeap is:texture(more the one), TransformMatrix(geometry count),
-		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//material(geometry count), light matrix, world related matrix.
+		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)
+		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//TransformMatrix(geometry count), light matrix, world related matrix.
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;																	
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
 
@@ -166,6 +166,7 @@ void wxGraphicD3D12::RetrievalAssetDirectory()
 	for (auto it : m_vec_AssetFileTitle)
 	{
 		fileLoader.GetNameByNameAndSuffix(m_vec_TextureTitle, ASSET_DIRECTORY, MATCH_TEXTURE, SUFFIX_BMP, it);
+		fileLoader.GetNameByNameAndSuffix(m_vec_TextureTitle, ASSET_DIRECTORY, MATCH_NORMALMAP, SUFFIX_BMP, it);
 	}
 }
 // Load the sample assets.
@@ -267,15 +268,14 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		}
 
 		CD3DX12_DESCRIPTOR_RANGE1 ranges[3];
-		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view and world matrix resource
-		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//transform matrix resource view
-		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, CONSTANTMATRIX_COUNT + SUNLIGHT_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, CONSTANTMATRIX_COUNT + SUNLIGHT_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
 		CD3DX12_ROOT_PARAMETER1 rootParameters[4];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
-		rootParameters[1].InitAsShaderResourceView(1, 0);//(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
-		rootParameters[2].InitAsShaderResourceView(2, 0);//(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
-		rootParameters[3].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[1].InitAsShaderResourceView(1, 0);//material resource view
+		rootParameters[2].InitAsShaderResourceView(2, 0);//transform matrix resource view
+		rootParameters[3].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
 
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
 		sampler.Filter = D3D12_FILTER_ANISOTROPIC;
@@ -440,7 +440,7 @@ void wxGraphicD3D12::PopulateCommandList()
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
-	srvConstantBuff.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * 3);
+	srvConstantBuff.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END);
 	m_commandList->SetGraphicsRootDescriptorTable(3, srvConstantBuff);
 
 	m_commandList->OMSetStencilRef(1);
@@ -452,15 +452,11 @@ void wxGraphicD3D12::PopulateCommandList()
 	{
 		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += i * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);
+		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);	//texture
 		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_VertexBufferView[i]));
 		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += ((GetSceneGeometryNodeCount() + i) * m_TypedDescriptorSize);
-		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += ((GetSceneGeometryNodeCount() * 2 + i) * m_TypedDescriptorSize);
-		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());
+		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
+		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
@@ -476,11 +472,7 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);
 		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_VertexBufferView[i]));
 		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += ((GetSceneGeometryNodeCount() + i) * m_TypedDescriptorSize);
 		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += ((GetSceneGeometryNodeCount() * 2 + i) * m_TypedDescriptorSize);
 		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
@@ -676,6 +668,7 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 							{
 								SceneObjectMaterial* matNode = _itr1->second;
 								mat.Roughness = matNode->GetRoughness();
+								mat.Roughness = 0.7;
 								Color tempColor = matNode->GetDiffuseColor();
 								mat.diffuse = Vector4FT({ tempColor.Value.element[0], tempColor.Value.element[1], tempColor.Value.element[2] , 1.0f});
 								//mat.m_AmbientOcclusion = matNode->GetAmbientOcclusion();
@@ -1069,7 +1062,7 @@ void wxGraphicD3D12::CreateObjConst(std::vector<wxObjConst>& objConst)
 		srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
 		CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(m_srvHeap->GetCPUDescriptorHandleForHeapStart());
-		hDescriptor.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * 2 + i);
+		hDescriptor.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_TRANSFORMMATRIX + i);
 		m_device->CreateShaderResourceView(m_vec_objConstRes[i].Get(), &srvDesc, hDescriptor);
 	}
 }
@@ -1118,7 +1111,7 @@ void wxGraphicD3D12::CreateConstantMatrix()
 	m_constantBuffer->Map(0, &readRange, &m_pCBDataBegin);
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * 3 + SUNLIGHT_COUNT);
+	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT);
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
 	constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
@@ -1163,7 +1156,7 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	m_sunLight->Map(0, &readRange, &m_pSunLightDataBegin);
 	memcpy(m_pSunLightDataBegin, &m_sunLightBuff, sizeof(wxLight));
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * 3);
+	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END);
 	
 	m_cbvSunLight.BufferLocation = m_sunLight->GetGPUVirtualAddress();
 	m_cbvSunLight.SizeInBytes = ALIGN_256(sizeof(wxLight));

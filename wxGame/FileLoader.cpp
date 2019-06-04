@@ -40,7 +40,7 @@ FileLoader::FileInfo FileLoader::LoadBinary(const char* filename, bool pureBinar
 void FileLoader::GetTitleBySuffix(std::vector<std::string>& return_title, std::string path, std::string match, std::string suffix)
 {
 	regex match_ogex(match);
-	match_results<string::const_iterator> result;
+	//match_results<string::const_iterator> result;
 	for (auto& it : fs::directory_iterator(path))
 	{
 		auto itp = it.path();
@@ -60,7 +60,7 @@ void FileLoader::GetNameByNameAndSuffix(std::vector<std::string>& return_title, 
 {
 	std::string AppendStr = name + match;
 	regex match_ogex(AppendStr);
-	match_results<string::const_iterator> result;
+	//match_results<string::const_iterator> result;
 	for (auto& it : fs::directory_iterator(path))
 	{
 		auto itp = it.path();

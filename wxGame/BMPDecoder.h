@@ -11,6 +11,29 @@ typedef struct ImageCommon
 	unsigned int imBitCount;
 	unsigned int imPitch;
 	size_t  imDataSize;
+	//ImageCommon()
+	//{
+	//	imWidth = 0;
+	//	imHeight = 0;
+	//	imData = nullptr;
+	//	imBitCount = 0;
+	//	imPitch = 0;
+	//	imDataSize = 0;
+	//}
+	//~ImageCommon()
+	//{
+	//	imWidth = 0;
+	//	imHeight = 0;
+	//	if (imData)
+	//	{
+	//		delete[] imData;
+	//		imData = nullptr;
+	//	}
+	//	imData = nullptr;
+	//	imBitCount = 0;
+	//	imPitch = 0;
+	//	imDataSize = 0;
+	//}
 } ImageCommon;
 
 
