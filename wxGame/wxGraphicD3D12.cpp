@@ -865,12 +865,12 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 	for (int i = 0; i != title.size(); i++)
 	{
 #ifdef _X86
-		dataBuffer = bmpDecoder.BMPLoader((ASSET_DIRECTORY + title[i]).c_str());
-		imgCommon = bmpDecoder.BMPParser(dataBuffer);
+		bmpDecoder.BMPLoader((ASSET_DIRECTORY + title[i]).c_str());
+		bmpDecoder.BMPParser(imgCommon, bmpDecoder.BMPDataBuffer);
 
 #else
-		dataBuffer = bmpDecoder.BMPLoader((ASSET_DIRECTORY + title[i]).c_str());
-		imgCommon = bmpDecoder.BMPParser(dataBuffer);
+		bmpDecoder.BMPLoader((ASSET_DIRECTORY + title[i]).c_str());
+		bmpDecoder.BMPParser(imgCommon, bmpDecoder.BMPDataBuffer);
 #endif
 
 		// Create the texture.
@@ -953,8 +953,8 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			hDescriptor.ptr += m_TypedDescriptorSize * m_textureSRVCount;
 			m_device->CreateShaderResourceView(m_vec_texture[i], &srvDesc, hDescriptor);
 			m_textureSRVCount++;
-			delete[] imgCommon.imData;
-			imgCommon.imData = nullptr;
+			//delete[] imgCommon.imData;
+			//imgCommon.imData = nullptr;
 		}
 	}
 }

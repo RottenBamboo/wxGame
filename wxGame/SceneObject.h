@@ -244,7 +244,7 @@ namespace wxGame
 			{
 				BMPDecoder bmpDecoder;
 				DataBuffer dataBuffer;
-				m_pImage = &bmpDecoder.BMPParser(dataBuffer);
+				bmpDecoder.BMPParser(*m_pImage, dataBuffer);
 			}
 		}
 		friend std::ostream& operator<< (std::ostream& out, const SceneObjectTexture& obj)

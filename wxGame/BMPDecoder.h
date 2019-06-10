@@ -11,29 +11,44 @@ typedef struct ImageCommon
 	unsigned int imBitCount;
 	unsigned int imPitch;
 	size_t  imDataSize;
-	//ImageCommon()
-	//{
-	//	imWidth = 0;
-	//	imHeight = 0;
-	//	imData = nullptr;
-	//	imBitCount = 0;
-	//	imPitch = 0;
-	//	imDataSize = 0;
-	//}
-	//~ImageCommon()
-	//{
-	//	imWidth = 0;
-	//	imHeight = 0;
-	//	if (imData)
-	//	{
-	//		delete[] imData;
-	//		imData = nullptr;
-	//	}
-	//	imData = nullptr;
-	//	imBitCount = 0;
-	//	imPitch = 0;
-	//	imDataSize = 0;
-	//}
+	ImageCommon()
+	{
+		imWidth = 0;
+		imHeight = 0;
+		imData = nullptr;
+		imBitCount = 0;
+		imPitch = 0;
+		imDataSize = 0;
+	}
+	~ImageCommon()
+	{
+		imWidth = 0;
+		imHeight = 0;
+		delete[] imData;
+		imData = nullptr;
+		imBitCount = 0;
+		imPitch = 0;
+		imDataSize = 0;
+	}
+	ImageCommon(const ImageCommon & icom)
+	{
+		copy(icom);
+	}
+	ImageCommon& operator=(const ImageCommon& icom)
+	{
+		copy(icom);
+		return *this;
+	}
+	void copy(const ImageCommon & icom)
+	{
+		imWidth = icom.imWidth;
+		imHeight = icom.imHeight;
+		imDataSize = icom.imDataSize;
+		imData = new unsigned char[icom.imDataSize];
+		memcpy(imData, icom.imData, icom.imDataSize);
+		imBitCount = icom.imBitCount;
+		imPitch = icom.imPitch;
+	}
 } ImageCommon;
 
 
@@ -66,10 +81,12 @@ struct BITMAP_INFO_HEADER	//the msdn document url:https://msdn.microsoft.com/en-
 class BMPDecoder
 {
 public:
-	BMPDecoder() {};
+	BMPDecoder():BMPDataBuffer(){};
 	~BMPDecoder() {};
-	ImageCommon BMPParser(DataBuffer& dataBuffer);
-	DataBuffer BMPLoader(const char* filename);
+	void BMPParser(ImageCommon& imgCom, DataBuffer& dataBuffer);
+	void BMPLoader(const char* filename);
+
+	DataBuffer BMPDataBuffer;
 	//ImageCommon BMPtoImageCommon(const char* filename);
 private:
 	BITMAP_FILE_HEADER m_bitmapFileHeader;
