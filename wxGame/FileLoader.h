@@ -6,7 +6,7 @@
 #define SUFFIX_OGEX ".ogex"
 #define MATCH_TEXTURE "_texture_[0-9]*\\.bmp$"
 #define SUFFIX_BMP ".bmp"
-#define MATCH_NORMALMAP "_normal_map_[0-9]*\\.bmp$"
+#define MATCH_NORMALMAP "_normalmap_[0-9]*\\.bmp$"
 namespace wxGame {
 	/*
 	const std::string szFindOgex = "[\\S\\s]*\\.ogex$";

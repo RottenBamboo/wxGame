@@ -39,6 +39,7 @@ namespace wxGame {
 		enum SRV_TYPE
 		{
 			TYPE_TEXTURE = 0,
+			TYPE_NORMAL_MAP,
 			TYPE_MATERIAL,
 			TYPE_TRANSFORMMATRIX,
 			TYPE_END
@@ -145,6 +146,7 @@ namespace wxGame {
 
 		std::vector<std::string> m_vec_AssetFileTitle;
 		std::vector<std::string> m_vec_TextureTitle;
+		std::vector<std::string> m_vec_NormalMapTitle;
 		unsigned int m_numIndices;
 		std::vector<unsigned int> m_vec_numIndices;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_matRes;

@@ -166,7 +166,7 @@ void wxGraphicD3D12::RetrievalAssetDirectory()
 	for (auto it : m_vec_AssetFileTitle)
 	{
 		fileLoader.GetNameByNameAndSuffix(m_vec_TextureTitle, ASSET_DIRECTORY, MATCH_TEXTURE, SUFFIX_BMP, it);
-		fileLoader.GetNameByNameAndSuffix(m_vec_TextureTitle, ASSET_DIRECTORY, MATCH_NORMALMAP, SUFFIX_BMP, it);
+		fileLoader.GetNameByNameAndSuffix(m_vec_NormalMapTitle, ASSET_DIRECTORY, MATCH_NORMALMAP, SUFFIX_BMP, it);
 	}
 }
 // Load the sample assets.
@@ -267,8 +267,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 		}
 
-		CD3DX12_DESCRIPTOR_RANGE1 ranges[3];
-		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
+		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, normalmap texture, specified shaderRegister number
 		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, CONSTANTMATRIX_COUNT + SUNLIGHT_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
 		CD3DX12_ROOT_PARAMETER1 rootParameters[4];
@@ -887,7 +887,6 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			textureDesc.SampleDesc.Quality = 0;
 			textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 
-
 			hr = m_device->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 				D3D12_HEAP_FLAG_NONE,
@@ -953,8 +952,6 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			hDescriptor.ptr += m_TypedDescriptorSize * m_textureSRVCount;
 			m_device->CreateShaderResourceView(m_vec_texture[i], &srvDesc, hDescriptor);
 			m_textureSRVCount++;
-			//delete[] imgCommon.imData;
-			//imgCommon.imData = nullptr;
 		}
 	}
 }
