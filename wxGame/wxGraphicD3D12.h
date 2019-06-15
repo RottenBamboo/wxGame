@@ -13,6 +13,12 @@
 #define GAMEPAD_LEFT_THUMB_DEADZONE 16354 
 #define GAMEPAD_RIGHT_THUMB_DEADZONE 16354
 
+#define MATCH_OGEX "[\\S\\s]*\\.ogex$"
+#define SUFFIX_OGEX ".ogex"
+#define MATCH_TEXTURE "_texture_[0-9]*\\.bmp$"
+#define SUFFIX_BMP ".bmp"
+#define MATCH_NORMALMAP "_normalmap_[0-9]*\\.bmp$"
+
 using namespace DirectX;
 using namespace Mathmatic;
 using namespace wxGame;
@@ -146,7 +152,6 @@ namespace wxGame {
 
 		std::vector<std::string> m_vec_AssetFileTitle;
 		std::vector<std::string> m_vec_TextureTitle;
-		std::vector<std::string> m_vec_NormalMapTitle;
 		unsigned int m_numIndices;
 		std::vector<unsigned int> m_vec_numIndices;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_matRes;

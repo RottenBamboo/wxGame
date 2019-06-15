@@ -83,7 +83,7 @@ class BMPDecoder
 public:
 	BMPDecoder():BMPDataBuffer(){};
 	~BMPDecoder() {};
-	void BMPParser(ImageCommon& imgCom, DataBuffer& dataBuffer);
+	void BMPParser(ImageCommon& imgCom);
 	void BMPLoader(const char* filename);
 
 	DataBuffer BMPDataBuffer;

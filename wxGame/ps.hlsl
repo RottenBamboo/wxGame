@@ -37,6 +37,7 @@ cbuffer csunLight : register(b0)
 
 
 Texture2D g_texture : register(t0);
+Texture2D g_normalmap : register(t3);
 SamplerState g_sampler : register(s0);
 
 float4 PSMain(PSInput input) : SV_TARGET

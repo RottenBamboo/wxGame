@@ -5,7 +5,7 @@
 #include <algorithm>
 using namespace Mathmatic;
 using namespace wxGame;
-void BMPDecoder::BMPParser(ImageCommon& imgCom, DataBuffer& dataBuffer)
+void BMPDecoder::BMPParser(ImageCommon& imgCom)
 {
 	const BITMAP_FILE_HEADER* pBitMapFileHeader = reinterpret_cast<BITMAP_FILE_HEADER*>(BMPDataBuffer.GetData());
 	const BITMAP_INFO_HEADER* pBitMapInfoHeader = reinterpret_cast<BITMAP_INFO_HEADER*>((unsigned char*)BMPDataBuffer.GetData() + BIT_MAPFILEHEADER_SIZE);

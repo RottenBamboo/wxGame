@@ -4,6 +4,8 @@
 #include "SceneManager.h"
 #define ASSET_DIRECTORY	"../wxAsset/"
 
+static std::vector<std::string> ResourceType = { MATCH_TEXTURE, MATCH_NORMALMAP };
+
 wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	GraphicD3D12(width, height, name),
 	m_pCBDataBegin(nullptr),			//constant buffer data pointer
@@ -165,8 +167,7 @@ void wxGraphicD3D12::RetrievalAssetDirectory()
 	fileLoader.GetTitleBySuffix(m_vec_AssetFileTitle, ASSET_DIRECTORY, MATCH_OGEX, SUFFIX_OGEX);
 	for (auto it : m_vec_AssetFileTitle)
 	{
-		fileLoader.GetNameByNameAndSuffix(m_vec_TextureTitle, ASSET_DIRECTORY, MATCH_TEXTURE, SUFFIX_BMP, it);
-		fileLoader.GetNameByNameAndSuffix(m_vec_NormalMapTitle, ASSET_DIRECTORY, MATCH_NORMALMAP, SUFFIX_BMP, it);
+		fileLoader.GetNameByNameAndSuffix(m_vec_TextureTitle, ASSET_DIRECTORY, ResourceType, SUFFIX_BMP, it);
 	}
 }
 // Load the sample assets.
@@ -267,15 +268,17 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 		}
 
-		CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
-		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, normalmap texture, specified shaderRegister number
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[3];
+		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
 		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, CONSTANTMATRIX_COUNT + SUNLIGHT_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
 
-		CD3DX12_ROOT_PARAMETER1 rootParameters[4];
+		CD3DX12_ROOT_PARAMETER1 rootParameters[5];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
 		rootParameters[1].InitAsShaderResourceView(1, 0);//material resource view
 		rootParameters[2].InitAsShaderResourceView(2, 0);//transform matrix resource view
 		rootParameters[3].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[4].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);
 
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
 		sampler.Filter = D3D12_FILTER_ANISOTROPIC;
@@ -457,6 +460,9 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
 		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
 		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
+		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += (GetSceneGeometryNodeCount() + i) * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
@@ -866,11 +872,11 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 	{
 #ifdef _X86
 		bmpDecoder.BMPLoader((ASSET_DIRECTORY + title[i]).c_str());
-		bmpDecoder.BMPParser(imgCommon, bmpDecoder.BMPDataBuffer);
+		bmpDecoder.BMPParser(imgCommon);
 
 #else
 		bmpDecoder.BMPLoader((ASSET_DIRECTORY + title[i]).c_str());
-		bmpDecoder.BMPParser(imgCommon, bmpDecoder.BMPDataBuffer);
+		bmpDecoder.BMPParser(imgCommon);
 #endif
 
 		// Create the texture.
@@ -895,7 +901,11 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 				nullptr,
 				IID_PPV_ARGS(&(m_vec_texture[i])));
 
-			const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_vec_texture[i], 0, 1);
+			UINT64 uploadBufferSize = 0;
+			if (imgCommon.imWidth != 0 && imgCommon.imHeight != 0)
+			{
+				uploadBufferSize = GetRequiredIntermediateSize(m_vec_texture[i], 0, 1);
+			}
 
 			// Create the GPU upload buffer.
 			hr = m_device->CreateCommittedResource(
@@ -939,7 +949,10 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			srvSubrecData.RowPitch = imgCommon.imPitch;
 			srvSubrecData.SlicePitch = imgCommon.imPitch * imgCommon.imHeight;
 
-			UpdateSubresources(m_commandList.Get(), m_vec_texture[i], m_vec_textureUploadHeap[i].Get(), 0, 0, 1, &srvSubrecData);
+			if (imgCommon.imWidth != 0 && imgCommon.imHeight != 0)
+			{
+				UpdateSubresources(m_commandList.Get(), m_vec_texture[i], m_vec_textureUploadHeap[i].Get(), 0, 0, 1, &srvSubrecData);
+			}
 			m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vec_texture[i], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 			// Describe and create a SRV for the texture.
@@ -952,6 +965,8 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			hDescriptor.ptr += m_TypedDescriptorSize * m_textureSRVCount;
 			m_device->CreateShaderResourceView(m_vec_texture[i], &srvDesc, hDescriptor);
 			m_textureSRVCount++;
+			//delete[] imgCommon.imData;
+			//imgCommon.imData = nullptr;
 		}
 	}
 }
