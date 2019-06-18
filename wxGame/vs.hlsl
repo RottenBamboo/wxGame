@@ -13,6 +13,7 @@ struct PSInput
 	float4 position : SV_POSITION;
 	float2 uv : TEXCOORD;
 	float3 normal : NORMAL;
+	float3 tangentU : TANGENT;
 };
 
 struct objConst
@@ -22,7 +23,7 @@ struct objConst
 
 StructuredBuffer<objConst> g_objConst : register(t2);
 
-PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal : NORMAL)
+PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal : NORMAL, float3 tangentU : TANGENT)
 {
 	PSInput result;
 	objConst objC = g_objConst[0];
@@ -31,6 +32,7 @@ PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal :
 	result.uv.x = uv.x;
 	result.uv.y = 1.f - uv.y;//v should be vertically reversed because the texture mapping is opposite direction when right hand coordinate transformed to left hand coordinate.
 	result.normal = mul(objC.TransMatrix, normal);
+	result.tangentU = mul(objC.TransMatrix, tangentU);
 
 	return result;
 }

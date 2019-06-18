@@ -324,6 +324,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 		D3D12_RASTERIZER_DESC RasterizerDefault;
 		RasterizerDefault.FillMode = D3D12_FILL_MODE_SOLID;
@@ -922,7 +923,7 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			D3D12_SUBRESOURCE_DATA srvSubrecData = {};
 			if (imgCommon.imBitCount == 24)
 			{
-				// DXGI does not have 24bit formats so we have to extend it to 32bit
+				// DXGI does not support 24bit formats so we have to extend it to 32bit
 				unsigned char new_pitch = imgCommon.imPitch / 3 * 4;
 				size_t data_size = new_pitch * imgCommon.imHeight;
 				DataBuffer* data = new DataBuffer(data_size);
@@ -965,8 +966,6 @@ void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 			hDescriptor.ptr += m_TypedDescriptorSize * m_textureSRVCount;
 			m_device->CreateShaderResourceView(m_vec_texture[i], &srvDesc, hDescriptor);
 			m_textureSRVCount++;
-			//delete[] imgCommon.imData;
-			//imgCommon.imData = nullptr;
 		}
 	}
 }
