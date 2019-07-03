@@ -9,6 +9,8 @@
 #include "SceneManager.h"
 
 #define SUNLIGHT_COUNT (int)1
+#define SHADOW_MAP_SRV_COUNT (int)1
+#define SHADOW_MAP_DSV_COUNT (int)1
 #define CONSTANTMATRIX_COUNT (int)1
 #define GAMEPAD_LEFT_THUMB_DEADZONE 16354 
 #define GAMEPAD_RIGHT_THUMB_DEADZONE 16354
@@ -145,11 +147,14 @@ namespace wxGame {
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_VertexBufferView;
 		D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_IndexBufferView;
-		ComPtr<ID3D12Resource> m_texture;
+
 		std::vector<ID3D12Resource*> m_vec_texture;
 		ComPtr<ID3D12Resource> m_textureUploadHeap;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
 
+		ID3D12Resource* m_shadowMapSrv;
+		ID3D12Resource* m_shadowMapDsv;
+		ComPtr<ID3D12Resource> m_shadowMap;
 		std::vector<std::string> m_vec_AssetFileTitle;
 		std::vector<std::string> m_vec_TextureTitle;
 		unsigned int m_numIndices;
@@ -170,6 +175,7 @@ namespace wxGame {
 		int m_textureSRVCount;
 		int m_MaterialCount;
 		int m_TypedDescriptorSize;
+		int m_DepthStencilDescriptorSize;
 		DWORD m_controllerState;
 
 		void LoadPipeline();
@@ -191,6 +197,7 @@ namespace wxGame {
 		void UpdateConstantBuffer(void);
 		void CheckControllerInput(void);
 		int	GetSceneGeometryNodeCount();
+		void GenerateShadowMap();
 
 		float m_cameraMoveBaseSpeed;// = 0.5f;
 		float m_cameraRotationSpeed;// = 0.015f;
