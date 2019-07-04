@@ -416,14 +416,25 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+
+		D3D12_RASTERIZER_DESC smapRasterizer;
+		smapRasterizer.FillMode = D3D12_FILL_MODE_SOLID;
+		smapRasterizer.CullMode = D3D12_CULL_MODE_NONE;	//this specified the not drawing face of the object
+		smapRasterizer.FrontCounterClockwise = true;
+		smapRasterizer.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+		smapRasterizer.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+		smapRasterizer.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+		smapRasterizer.DepthClipEnable = FALSE;
+		smapRasterizer.MultisampleEnable = TRUE;
+		smapRasterizer.AntialiasedLineEnable = FALSE;
+		smapRasterizer.ForcedSampleCount = 0;
+		smapRasterizer.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC smapPsoDesc = {};
 		smapPsoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
 		smapPsoDesc.pRootSignature = m_rootSignature.Get();
 		smapPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
 		smapPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-		smapPsoDesc.RasterizerState.DepthBias = 100000;
-		smapPsoDesc.RasterizerState.DepthBiasClamp = 0.0f;
-		smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
 		smapPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		smapPsoDesc.DepthStencilState = defaultDepthStencil;
 		smapPsoDesc.SampleMask = UINT_MAX;
@@ -431,7 +442,12 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapPsoDesc.NumRenderTargets = 0;
 		smapPsoDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
 		smapPsoDesc.SampleDesc.Count = 1;
+		//smapPsoDesc.SampleDesc.Quality = 4;
 		smapPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		smapPsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		smapPsoDesc.RasterizerState.DepthBias = 100000;
+		smapPsoDesc.RasterizerState.DepthBiasClamp = 0.0f;
+		smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&smapPsoDesc, IID_PPV_ARGS(&m_shadowMapPipelineState)));
 }
 
