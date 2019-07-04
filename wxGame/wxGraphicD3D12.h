@@ -138,6 +138,7 @@ namespace wxGame {
 		ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 		ComPtr<ID3D12PipelineState> m_defaultPipelineState;
 		ComPtr<ID3D12PipelineState> m_shadowPipelineState;
+		ComPtr<ID3D12PipelineState> m_shadowMapPipelineState;
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		UINT m_rtvDescriptorSize;
 

@@ -272,8 +272,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		CD3DX12_DESCRIPTOR_RANGE1 ranges[4];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
 		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
-		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 4, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
+		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//normal texture, specified shaderRegister number
+		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 4, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//shadow map, specified shaderRegister number
 
 		CD3DX12_ROOT_PARAMETER1 rootParameters[6];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
@@ -412,6 +412,27 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		shadowPsoDesc.DepthStencilState = shadowDepthStencil;
 		shadowPsoDesc.BlendState.RenderTarget[0] = shadowBlendDesc;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&m_shadowPipelineState)));
+
+
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC smapPsoDesc = {};
+		smapPsoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+		smapPsoDesc.pRootSignature = m_rootSignature.Get();
+		smapPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
+		smapPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
+		smapPsoDesc.RasterizerState.DepthBias = 100000;
+		smapPsoDesc.RasterizerState.DepthBiasClamp = 0.0f;
+		smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
+		smapPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		smapPsoDesc.DepthStencilState = defaultDepthStencil;
+		smapPsoDesc.SampleMask = UINT_MAX;
+		smapPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		smapPsoDesc.NumRenderTargets = 0;
+		smapPsoDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+		smapPsoDesc.SampleDesc.Count = 1;
+		smapPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&smapPsoDesc, IID_PPV_ARGS(&m_shadowMapPipelineState)));
 }
 
 void wxGraphicD3D12::PopulateCommandList()
@@ -467,6 +488,8 @@ void wxGraphicD3D12::PopulateCommandList()
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += (GetSceneGeometryNodeCount() + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
+		srvOffset.ptr += m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
