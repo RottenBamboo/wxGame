@@ -450,6 +450,29 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&smapPsoDesc, IID_PPV_ARGS(&m_shadowMapPipelineState)));
 }
+void wxGraphicD3D12::PopulateShadowMapCommandList()
+{
+	m_commandList->RSSetViewports(1, &m_viewport);
+	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+	// Change to DEPTH_WRITE.
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE)); 
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart(); 
+	dsvHandle.ptr += m_DepthStencilDescriptorSize * SHADOW_MAP_DSV_COUNT;
+	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	// Set null render target because we are only going to draw to
+   // depth buffer.  Setting a null render target will disable color writes.
+   // Note the active PSO also must specify a render target count of 0.
+	m_commandList->OMSetRenderTargets(0, nullptr, false, &dsvHandle);
+	m_commandList->SetPipelineState(m_defaultPipelineState.Get());
+	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
+	{
+		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += i * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);	//shadowmap
+		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
+	}
+}
 
 void wxGraphicD3D12::PopulateCommandList()
 {
@@ -504,8 +527,8 @@ void wxGraphicD3D12::PopulateCommandList()
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += (GetSceneGeometryNodeCount() + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
-		srvOffset.ptr += m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
+		//srvOffset.ptr += m_TypedDescriptorSize;
+		//m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 

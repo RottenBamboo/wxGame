@@ -194,6 +194,7 @@ namespace wxGame {
 		void CreateObjConst(std::vector<wxObjConst>&);
 		void CreateConstantMatrix();
 		void PopulateCommandList();
+		void PopulateShadowMapCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
 		void CheckControllerInput(void);
