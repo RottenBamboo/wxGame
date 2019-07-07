@@ -36,6 +36,7 @@ cbuffer csunLight : register(b0)
 
 
 Texture2D g_texture : register(t0);
+Texture2D g_shadowMap : register(t4);
 SamplerState g_sampler : register(s0);
 SamplerState gsamAnisotropicWrap  : register(s1);
 
