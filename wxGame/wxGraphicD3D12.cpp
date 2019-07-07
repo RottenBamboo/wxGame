@@ -283,7 +283,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		rootParameters[4].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);
 		rootParameters[5].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_ALL);
 
-		D3D12_STATIC_SAMPLER_DESC sampleDesc[2];
+		D3D12_STATIC_SAMPLER_DESC sampleDesc[3];
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
 		sampler.Filter = D3D12_FILTER_ANISOTROPIC;
 		sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
@@ -298,8 +298,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		sampler.ShaderRegister = 0;
 		sampler.RegisterSpace = 0;
 		sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		sampleDesc[1] = sampler;
-
+		sampleDesc[0] = sampler;
+		
 		D3D12_STATIC_SAMPLER_DESC anisotropicSampler = {};
 		anisotropicSampler.Filter = D3D12_FILTER_ANISOTROPIC;
 		anisotropicSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -314,10 +314,27 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		anisotropicSampler.ShaderRegister = 1;
 		anisotropicSampler.RegisterSpace = 0;
 		anisotropicSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		sampleDesc[0] = anisotropicSampler;
+		sampleDesc[1] = anisotropicSampler;
+		
+		
+		D3D12_STATIC_SAMPLER_DESC shadowSampler = {};
+		shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+		shadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		shadowSampler.MipLODBias = 0.f;
+		shadowSampler.MaxAnisotropy = 16;
+		shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		shadowSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+		shadowSampler.MinLOD = 0.0f;
+		shadowSampler.MaxLOD = D3D12_FLOAT32_MAX;
+		shadowSampler.ShaderRegister = 2;
+		shadowSampler.RegisterSpace = 0;
+		shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		sampleDesc[2] = shadowSampler;
 
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 2, sampleDesc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 3, sampleDesc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
@@ -496,8 +513,6 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += (GetSceneGeometryNodeCount() + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
-		//srvOffset.ptr += m_TypedDescriptorSize;
-		//m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
