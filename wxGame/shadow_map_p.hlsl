@@ -38,11 +38,11 @@ cbuffer csunLight : register(b0)
 Texture2D g_texture : register(t0);
 Texture2D g_shadowMap : register(t4);
 SamplerState g_sampler : register(s0);
-SamplerState gsamAnisotropicWrap  : register(s1);
+SamplerState g_samAnisotropicWrap  : register(s1);
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
 	float4 rgbaColor = { 0.1f, 0.1f, 0.1f, 0.9f };	
-	rgbaColor *= g_texture.Sample(gsamAnisotropicWrap, input.uv);
+	rgbaColor *= g_texture.Sample(g_samAnisotropicWrap, input.uv);
 	return rgbaColor;
 }

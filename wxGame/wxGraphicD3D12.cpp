@@ -595,7 +595,7 @@ void wxGraphicD3D12::PopulateCommandList()
 // Update frame-based values.
 void wxGraphicD3D12::OnUpdate()
 {
-	UpdateConstantBuffer();
+	UpdateConstantBuffer(); 
 	CheckControllerInput();
 }
 
@@ -652,7 +652,8 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	////angleAxisY = 0;
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.cameraPos = m_defaultCameraPosition;
-	constBuff.viewPos = m_defaultLookAt;
+	constBuff.viewPos = m_defaultLookAt; 
+	UpdateLightMatrix();
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
 
 	//m_vec_objConstStut[1].linearTransMatrix = MatrixMultiMatrix(m_vec_objConstStut[1].linearTransMatrix,constBuff.rotatMatrix);
@@ -660,6 +661,24 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	//m_vec_objConstRes[1]->Map(0, &readRange, &m_pObjConstDataBegin);
 	//memcpy(m_pObjConstDataBegin, &m_vec_objConstStut[1], sizeof(wxObjConst));
 
+}
+
+void wxGame::wxGraphicD3D12::UpdateLightMatrix(void)
+{
+	//fix the light direction temporary
+	Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),\
+								  Vector4FT({ m_sunLightBuff.Direction.element[0], m_sunLightBuff.Direction.element[1], m_sunLightBuff.Direction.element[2], 0.f}), \
+								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
+
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-36,36,36,-36,0,360);
+
+	Matrix4X4FT LightTransformNDC = {
+		0.5f, 0.0f, 0.0f, 0.0f,
+		0.0f, -0.5f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.5f, 0.5f, 0.0f, 1.0f };
+
+	constBuff.shadowTransform = MatrixMultiMatrix(MatrixMultiMatrix(LightViewMatrix, LightOthgraphicMatrix), LightTransformNDC);
 }
 
 void wxGraphicD3D12::LoadDataFromOGEX(std::vector<std::string>& title)

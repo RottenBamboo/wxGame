@@ -1,12 +1,20 @@
 #include "lighting.hlsl"
 struct PSInput
 {
-	float4 position : SV_POSITION;
+	float4 position : POSITION;
 	float2 uv : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangentU : TANGENT;
 };
 
+struct PSOutput
+{
+	float4 position : SV_POSITION;
+	float4 shadowPosition : POSITION0;
+	float2 uv : TEXCOORD;
+	float3 normal : NORMAL;
+	float3 tangentU : TANGENT;
+};
 cbuffer cmatrix:register(b1)
 {
 	matrix viewMatrix;
@@ -58,9 +66,14 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
 
 	return bumpedNormalW;
 }
-float4 PSMain(PSInput input) : SV_TARGET
+float4 PSMain(PSOutput input) : SV_TARGET
 { 
-	objMaterial objM = g_objMaterial[0];
+	objMaterial objM = g_objMaterial[0]; 
+
+	// Only the first light casts a shadow.
+	float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
+	shadowFactor[0] = CalcShadowFactor(input.shadowPosition);
+
 	const float shininess = 1.0f - objM.mroughness;
 	float4 rgbaColor = g_texture.Sample(g_sampler, input.uv);
 	float4 NormalMap = g_normalmap.Sample(g_sampler, input.uv);
@@ -75,7 +88,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 	float3 originPos = { 0.f, 0.f, 0.f };
 	float3 viewDirection = normalize(cameraPos1 - viewPos);
 	//float3 directLight = ComputeDirectionalLight(light, mat, input.normal, viewDirection);
-	float3 directLight = ComputeDirectionalLight(light, mat, bumpedNormal, viewDirection);
+	float3 directLight = shadowFactor[0] * ComputeDirectionalLight(light, mat, bumpedNormal, viewDirection);
 	rgbaColor.xyz = directLight + ambient;
 	return rgbaColor;
 }

@@ -3,6 +3,7 @@ cbuffer cmatrix:register(b1)
 	matrix viewMatrix;
 	matrix perspectiveMatrix;
 	matrix rotatMatrix;
+	matrix shadowTransform;
 	matrix shadowMatrix;
 	float4 cameraPos;
 	float4 viewPos;
@@ -10,12 +11,20 @@ cbuffer cmatrix:register(b1)
 
 struct PSInput
 {
-	float4 position : SV_POSITION;
+	float4 position : POSITION;
 	float2 uv : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangentU : TANGENT;
 };
 
+struct PSOutput
+{
+	float4 position : SV_POSITION;
+	float4 shadowPosition : POSITION0;
+	float2 uv : TEXCOORD;
+	float3 normal : NORMAL;
+	float3 tangentU : TANGENT;
+};
 struct objConst
 {
 	matrix TransMatrix;
@@ -23,9 +32,9 @@ struct objConst
 
 StructuredBuffer<objConst> g_objConst : register(t2);
 
-PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal : NORMAL, float3 tangentU : TANGENT)
+PSOutput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal : NORMAL, float3 tangentU : TANGENT)
 {
-	PSInput result;
+	PSOutput result;
 	objConst objC = g_objConst[0];
 	//result.position = mul(perspectiveMatrix, mul(viewMatrix, mul(rotatMatrix, mul(objC.TransMatrix, position))));
 	result.position = mul(perspectiveMatrix, mul(viewMatrix, mul(objC.TransMatrix, position)));
@@ -33,6 +42,7 @@ PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal :
 	result.uv.y = 1.f - uv.y;//v should be vertically reversed because the texture mapping is opposite direction when right hand coordinate transformed to left hand coordinate.
 	result.normal = mul(objC.TransMatrix, normal);
 	result.tangentU = mul(objC.TransMatrix, tangentU);
+	result.shadowPosition = mul(shadowTransform, mul(objC.TransMatrix, position));
 
 	return result;
 }

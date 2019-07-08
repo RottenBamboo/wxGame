@@ -691,12 +691,12 @@ namespace Mathmatic
 		return perspectiveMatrix;
 	}
 
-	/*template<template<int, int, typename> class TT = Matrix>
+	template<template<int, int, typename> class TT = Matrix>
 	Matrix4X4FT BuildOthographicMatrixForLH(const float leftPlane, const float rightPlane, const float topPlane, const float bottomPlane, const float nearPlane, const float farPlane)
 	{
-		float width = MATH_ABS(right - left);
+		float width = MATH_ABS(rightPlane - leftPlane);
 		float height = MATH_ABS(topPlane - bottomPlane);
-		Matrix4X4 othographicMatrix = {
+		Matrix4X4FT othographicMatrix = {
 		2 / width, 0.f, 0.f, 0.f,
 		0, 2 / height, 0.f, 0.f,
 		0.f, 0.f, 1 / (farPlane - nearPlane), 0.f,
@@ -705,7 +705,7 @@ namespace Mathmatic
 		return othographicMatrix;
 	}
 
-	template<template<int, int, typename> class TT = Matrix>
+	/*template<template<int, int, typename> class TT = Matrix>
 	Matrix4X4FT BuildTextureMatrix()
 	{
 		return MAtrix4X4 textureMatrix = {

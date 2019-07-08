@@ -74,6 +74,7 @@ namespace wxGame {
 			Matrix4X4FT viewMatrix;
 			Matrix4X4FT perspectiveMatrix;
 			Matrix4X4FT rotatMatrix;
+			Matrix4X4FT shadowTransform;
 			XMMATRIX shadowMatrix;
 			Vector4FT cameraPos;
 			Vector4FT viewPos;
@@ -83,6 +84,7 @@ namespace wxGame {
 				MatrixIdentity(viewMatrix);
 				MatrixIdentity(perspectiveMatrix);
 				MatrixIdentity(rotatMatrix);
+				MatrixIdentity(shadowTransform);
 				//MatrixIdentity(shadowMatrix);
 				cameraPos = { 0.f,0.f,0.f,1.f };
 				viewPos = { 0.f,0.f,1.f };
@@ -197,6 +199,7 @@ namespace wxGame {
 		void PopulateShadowMapCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
+		void UpdateLightMatrix(void);
 		void CheckControllerInput(void);
 		int	GetSceneGeometryNodeCount();
 		void GenerateShadowMap();
