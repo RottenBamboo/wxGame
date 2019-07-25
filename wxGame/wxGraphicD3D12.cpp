@@ -670,7 +670,7 @@ void wxGame::wxGraphicD3D12::UpdateLightMatrix(void)
 								  Vector4FT({ m_sunLightBuff.Direction.element[0], m_sunLightBuff.Direction.element[1], m_sunLightBuff.Direction.element[2], 0.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-36,36,36,-36,0,360);
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-600,600,600,-600,0,600);
 
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
@@ -760,6 +760,17 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 										vertexMix[label].Normal.element[0] = pNormal[i];
 										vertexMix[label].Normal.element[1] = pNormal[i + 1];
 										vertexMix[label].Normal.element[2] = pNormal[i + 2];
+									}
+								}
+								if (v_property_array.GetAttribute() == "tangent")
+								{
+									float* pTangent = (float*)v_property_array.GetData();
+									for (uint32_t i = 0; i < length; i = i + 3)
+									{
+										size_t label = i / 3;
+										vertexMix[label].tangent.element[0] = pTangent[i];
+										vertexMix[label].tangent.element[1] = pTangent[i + 1];
+										vertexMix[label].tangent.element[2] = pTangent[i + 2];
 									}
 								}
 							}
@@ -1324,8 +1335,8 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantSunLightDesc, \
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
-	m_sunLightBuff.Direction = Vector3FT({ 1.f, -1.f, -1.f });
-	m_sunLightBuff.Position = Vector3FT({ 100.f,100.f,100.f });
+	m_sunLightBuff.Direction = Vector3FT({ 1.f, -1.f, 0.f });
+	m_sunLightBuff.Position = Vector3FT({ 0.f,-300.f,-300.f });
 	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
 	m_sunLightBuff.FalloffStart = 0.f;

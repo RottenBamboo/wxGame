@@ -58,6 +58,7 @@ namespace wxGame {
 			Vector4FT position;
 			Vector2FT uv;
 			Vector3FT Normal;
+			Vector3FT tangent;
 		};
 
 		struct wxObjConst

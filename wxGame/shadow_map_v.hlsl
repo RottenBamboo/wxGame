@@ -3,6 +3,7 @@ cbuffer cmatrix:register(b1)
 	matrix viewMatrix;
 	matrix perspectiveMatrix;
 	matrix rotatMatrix;
+	matrix shadowTransform;
 	matrix shadowMatrix;
 	float4 cameraPos;
 	float4 viewPos;

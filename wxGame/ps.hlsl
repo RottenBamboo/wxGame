@@ -11,6 +11,7 @@ struct PSOutput
 {
 	float4 position : SV_POSITION;
 	float4 shadowPosition : POSITION0;
+	float3 PositionWorld : POSITION1;
 	float2 uv : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangentU : TANGENT;
@@ -20,6 +21,7 @@ cbuffer cmatrix:register(b1)
 	matrix viewMatrix;
 	matrix perspectiveMatrix;
 	matrix rotatMatrix;
+	matrix shadowTransform;
 	matrix shadowMatrix;
 	float4 cameraPos;
 	float4 viewPos;
@@ -82,13 +84,13 @@ float4 PSMain(PSOutput input) : SV_TARGET
 	ambient = ambient * rgbaColor;
 	Material mat = { rgbaColor, objM.mfresnelR0, shininess };
 	Light light = { Strength, FalloffStart, Direction, FalloffEnd, Position, SpotPower };
-	//input.normal = normalize(input.normal);
+	//bumpedNormal = normalize(input.normal);
 	bumpedNormal = normalize(bumpedNormal);
 	float3 cameraPos1 = cameraPos;
 	float3 originPos = { 0.f, 0.f, 0.f };
-	float3 viewDirection = normalize(cameraPos1 - viewPos);
+	float3 viewDirection = normalize(cameraPos1 - input.PositionWorld);
 	//float3 directLight = ComputeDirectionalLight(light, mat, input.normal, viewDirection);
-	float3 directLight = shadowFactor[0] * ComputeDirectionalLight(light, mat, bumpedNormal, viewDirection);
+	float3 directLight = ComputeDirectionalLight(light, mat, bumpedNormal, viewDirection);//*shadowFactor[0];
 	rgbaColor.xyz = directLight + ambient;
 	return rgbaColor;
 }

@@ -697,8 +697,8 @@ namespace Mathmatic
 		float width = MATH_ABS(rightPlane - leftPlane);
 		float height = MATH_ABS(topPlane - bottomPlane);
 		Matrix4X4FT othographicMatrix = {
-		2 / width, 0.f, 0.f, 0.f,
-		0, 2 / height, 0.f, 0.f,
+		1 / width, 0.f, 0.f, 0.f,
+		0, 1 / height, 0.f, 0.f,
 		0.f, 0.f, 1 / (farPlane - nearPlane), 0.f,
 		0.f, 0.f, nearPlane / (nearPlane - farPlane), 1.f
 		};
