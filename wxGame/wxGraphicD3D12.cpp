@@ -136,7 +136,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_SRV_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)
+		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//TransformMatrix(geometry count), light matrix, world related matrix.
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;																	
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -413,41 +413,6 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_defaultPipelineState)));
 
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
-
-		D3D12_DEPTH_STENCIL_DESC shadowDepthStencil;
-		shadowDepthStencil.DepthEnable = true;
-		shadowDepthStencil.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		shadowDepthStencil.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		shadowDepthStencil.StencilEnable = true;
-		shadowDepthStencil.StencilReadMask = 0xff;
-		shadowDepthStencil.StencilWriteMask = 0xff;
-		shadowDepthStencil.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP; shadowDepthStencil.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		shadowDepthStencil.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR; shadowDepthStencil.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
-		// We are not rendering backfacing polygons, so these settings do not // matter. 
-		shadowDepthStencil.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP; shadowDepthStencil.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		shadowDepthStencil.BackFace.StencilPassOp = D3D12_STENCIL_OP_INCR; shadowDepthStencil.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
-
-		D3D12_RENDER_TARGET_BLEND_DESC shadowBlendDesc;
-		shadowBlendDesc.BlendEnable = true;
-		shadowBlendDesc.LogicOpEnable = false;
-		shadowBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-		shadowBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-		shadowBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
-		shadowBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
-		shadowBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
-		shadowBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-		shadowBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
-		shadowBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowPsoDesc = psoDesc;
-		shadowPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-		shadowPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-		shadowPsoDesc.DepthStencilState = shadowDepthStencil;
-		shadowPsoDesc.BlendState.RenderTarget[0] = shadowBlendDesc;
-		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&m_shadowPipelineState)));
-
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
@@ -493,7 +458,7 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart(); 
-	dsvHandle.ptr += m_DepthStencilDescriptorSize * SHADOW_MAP_DSV_COUNT;
+	dsvHandle.ptr += m_DepthStencilDescriptorSize;
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	// Set null render target because we are only going to draw to
    // depth buffer.  Setting a null render target will disable color writes.
@@ -510,11 +475,12 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
 		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
 		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() + i) * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
-		srvOffset.ptr += m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(5	, srvOffset);	//shadowmap
+		//srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		//srvOffset.ptr += (GetSceneGeometryNodeCount() + TYPE_NORMAL_MAP) * m_TypedDescriptorSize;
+		//m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
+		//srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		//srvOffset.ptr += (GetSceneGeometryNodeCount() + TYPE_SHADOW_MAP) * m_TypedDescriptorSize;
+		//m_commandList->SetGraphicsRootDescriptorTable(5	, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
@@ -574,15 +540,14 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
 		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() + i) * m_TypedDescriptorSize;
+		srvOffset.ptr += (GetSceneGeometryNodeCount() + TYPE_NORMAL_MAP) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
-		srvOffset.ptr += m_TypedDescriptorSize;
+		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += (GetSceneGeometryNodeCount() + TYPE_SHADOW_MAP) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
-	m_commandList->OMSetStencilRef(0);
-	m_commandList->SetPipelineState(m_shadowPipelineState.Get());
 	// Record commands.
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -994,12 +959,13 @@ void wxGraphicD3D12::CreateIndexBuffer(int& indice, size_t size)
 }
 void wxGraphicD3D12::GenerateShadowMap()
 {
+	m_vec_shadowMap.resize(GetSceneGeometryNodeCount());
 	D3D12_RESOURCE_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
 	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	texDesc.Alignment = 0;
-	texDesc.Width = 2048;
-	texDesc.Height = 2048;
+	texDesc.Width = 4096;
+	texDesc.Height = 4096;
 	texDesc.DepthOrArraySize = 1;
 	texDesc.MipLevels = 1;
 	texDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
@@ -1011,8 +977,32 @@ void wxGraphicD3D12::GenerateShadowMap()
 	D3D12_CLEAR_VALUE optClear;
 	optClear.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	optClear.DepthStencil.Depth = 1.0f;
-	optClear.DepthStencil.Stencil = 0;
+	optClear.DepthStencil.Stencil = 0; 
+	// Create SRV to resource so we can sample the shadow map in a shader program.
+	for (int i = 0; i != GetSceneGeometryNodeCount(); i++)
+	{
+		ThrowIfFailed(m_device->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&texDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			&optClear,
+			IID_PPV_ARGS(&(m_vec_shadowMap[i]))));
 
+		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vec_shadowMap[i], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		srvDesc.Texture2D.PlaneSlice = 0;
+		D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+		cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_SHADOW_MAP * GetSceneGeometryNodeCount() + i);
+		m_device->CreateShaderResourceView(m_vec_shadowMap[i], &srvDesc, cbvHandle);
+	}
 	ThrowIfFailed(m_device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
@@ -1020,29 +1010,18 @@ void wxGraphicD3D12::GenerateShadowMap()
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		&optClear,
 		IID_PPV_ARGS(&m_shadowMap)));
-
-	// Create SRV to resource so we can sample the shadow map in a shader program.
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = 1;
-	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	srvDesc.Texture2D.PlaneSlice = 0; 
-	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT);
-	m_device->CreateShaderResourceView(m_shadowMap.Get(), &srvDesc, cbvHandle);
-
 	// Create DSV to resource so we can render to the shadow map.
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	dsvDesc.Texture2D.MipSlice = 0; 
+	dsvDesc.Texture2D.MipSlice = 0;
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	dsvHandle.ptr += m_DepthStencilDescriptorSize * SHADOW_MAP_DSV_COUNT;
 	m_device->CreateDepthStencilView(m_shadowMap.Get(), &dsvDesc, dsvHandle);
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 }
 
 void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
@@ -1191,7 +1170,7 @@ void wxGraphicD3D12::CreateConstantMaterialBuffer(std::vector<wxMaterial>& mat)
 		m_vec_matRes[i]->Map(0, &readRange, &m_pwxMatDataBegin);
 		memcpy(m_pwxMatDataBegin, &mat[i], sizeof(wxMaterial));
 		D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-		cbvHandle.ptr += m_TypedDescriptorSize * (m_textureSRVCount + i);
+		cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_MATERIAL * GetSceneGeometryNodeCount() + i);
 
 		// Describe and create a SRV for the material.
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

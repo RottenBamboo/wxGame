@@ -9,7 +9,6 @@
 #include "SceneManager.h"
 
 #define SUNLIGHT_COUNT (int)1
-#define SHADOW_MAP_SRV_COUNT (int)1
 #define SHADOW_MAP_DSV_COUNT (int)1
 #define CONSTANTMATRIX_COUNT (int)1
 #define GAMEPAD_LEFT_THUMB_DEADZONE 16354 
@@ -50,6 +49,7 @@ namespace wxGame {
 			TYPE_NORMAL_MAP,
 			TYPE_MATERIAL,
 			TYPE_TRANSFORMMATRIX,
+			TYPE_SHADOW_MAP,
 			TYPE_END
 		};
 
@@ -140,7 +140,6 @@ namespace wxGame {
 		ComPtr<ID3D12DescriptorHeap> m_srvHeap;
 		ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 		ComPtr<ID3D12PipelineState> m_defaultPipelineState;
-		ComPtr<ID3D12PipelineState> m_shadowPipelineState;
 		ComPtr<ID3D12PipelineState> m_shadowMapPipelineState;
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		UINT m_rtvDescriptorSize;
@@ -159,6 +158,7 @@ namespace wxGame {
 		ID3D12Resource* m_shadowMapSrv;
 		ID3D12Resource* m_shadowMapDsv;
 		ComPtr<ID3D12Resource> m_shadowMap;
+		std::vector<ID3D12Resource*>  m_vec_shadowMap;
 		std::vector<std::string> m_vec_AssetFileTitle;
 		std::vector<std::string> m_vec_TextureTitle;
 		unsigned int m_numIndices;
