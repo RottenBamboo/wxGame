@@ -49,7 +49,6 @@ namespace wxGame {
 			TYPE_NORMAL_MAP,
 			TYPE_MATERIAL,
 			TYPE_TRANSFORMMATRIX,
-			TYPE_SHADOW_MAP,
 			TYPE_END
 		};
 
