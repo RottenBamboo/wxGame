@@ -476,7 +476,7 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
 		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() + TYPE_NORMAL_MAP) * m_TypedDescriptorSize;
+		srvOffset.ptr += (GetSceneGeometryNodeCount() + TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
