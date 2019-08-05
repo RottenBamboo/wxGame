@@ -116,12 +116,6 @@
     <FxCompile Include="vs.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
-    <FxCompile Include="shadow_p.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="shadow_v.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
     <FxCompile Include="shadow_map_p.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>

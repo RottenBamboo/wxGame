@@ -21,6 +21,8 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_fenceEvent(HANDLE()),
 	m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
 	m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
+	m_shadowmap_Viewport(0.0f, 0.0f, 4096, 4096),
+	m_shadowmap_ScissorRect(0, 0, 4096, 4096),
 	m_rtvDescriptorSize(0),
 	m_cameraMoveBaseSpeed(0.5f),
 	m_cameraRotationSpeed(0.015f),
@@ -307,7 +309,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		anisotropicSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 		anisotropicSampler.MipLODBias = 0.f;
 		anisotropicSampler.MaxAnisotropy = 8;
-		anisotropicSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		anisotropicSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 		anisotropicSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
 		anisotropicSampler.MinLOD = 0.0f;
 		anisotropicSampler.MaxLOD = D3D12_FLOAT32_MAX;
@@ -371,7 +373,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		RasterizerDefault.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 		RasterizerDefault.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 		RasterizerDefault.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-		RasterizerDefault.DepthClipEnable = FALSE;
+		RasterizerDefault.DepthClipEnable = TRUE;
 		RasterizerDefault.MultisampleEnable = TRUE;
 		RasterizerDefault.AntialiasedLineEnable = FALSE;
 		RasterizerDefault.ForcedSampleCount = 0;
@@ -402,20 +404,31 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		psoDesc.pRootSignature = m_rootSignature.Get();
 		psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
 		psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-		psoDesc.RasterizerState = RasterizerDefault;// CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+		//psoDesc.RasterizerState = RasterizerDefault;// CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		//psoDesc.DepthStencilState = defaultDepthStencil;
+
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		psoDesc.DepthStencilState = defaultDepthStencil;
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.SampleDesc.Count = 1;
+		psoDesc.SampleDesc.Quality = 0;
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_defaultPipelineState)));
 
+		const D3D_SHADER_MACRO alphaTestDefines[] =
+		{
+			"ALPHA_TEST", "1",
+			NULL, NULL
+		};
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_p.hlsl").c_str(), alphaTestDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 
 		D3D12_RASTERIZER_DESC smapRasterizer;
 		smapRasterizer.FillMode = D3D12_FILL_MODE_SOLID;
@@ -424,27 +437,27 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapRasterizer.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 		smapRasterizer.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 		smapRasterizer.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-		smapRasterizer.DepthClipEnable = FALSE;
+		smapRasterizer.DepthClipEnable = TRUE;
 		smapRasterizer.MultisampleEnable = TRUE;
 		smapRasterizer.AntialiasedLineEnable = FALSE;
 		smapRasterizer.ForcedSampleCount = 0;
 		smapRasterizer.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC smapPsoDesc = {};
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC smapPsoDesc = psoDesc;
 		smapPsoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
 		smapPsoDesc.pRootSignature = m_rootSignature.Get();
 		smapPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
 		smapPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-		smapPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		smapPsoDesc.DepthStencilState = defaultDepthStencil;
+		//smapPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		//smapPsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		smapPsoDesc.SampleMask = UINT_MAX;
 		smapPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		smapPsoDesc.NumRenderTargets = 0;
 		smapPsoDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
-		smapPsoDesc.SampleDesc.Count = 1;
+		//smapPsoDesc.SampleDesc.Count = 1;
 		//smapPsoDesc.SampleDesc.Quality = 4;
-		smapPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		smapPsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		//smapPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		//smapPsoDesc.RasterizerState = smapRasterizer;
 		smapPsoDesc.RasterizerState.DepthBias = 100000;
 		smapPsoDesc.RasterizerState.DepthBiasClamp = 0.0f;
 		smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
@@ -452,8 +465,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 }
 void wxGraphicD3D12::PopulateShadowMapCommandList()
 {
-	m_commandList->RSSetViewports(1, &m_viewport);
-	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+	m_commandList->RSSetViewports(1, &m_shadowmap_Viewport);
+	m_commandList->RSSetScissorRects(1, &m_shadowmap_ScissorRect);
 	// Change to DEPTH_WRITE.
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
@@ -476,9 +489,11 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
 		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() + TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
@@ -540,11 +555,6 @@ void wxGraphicD3D12::PopulateCommandList()
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		//srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
-		//m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
@@ -629,8 +639,7 @@ void wxGame::wxGraphicD3D12::UpdateLightMatrix(void)
 								  Vector4FT({ m_sunLightBuff.Direction.element[0], m_sunLightBuff.Direction.element[1], m_sunLightBuff.Direction.element[2], 0.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-600,600,600,-600,0,600);
-
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-60,60,60,-60,-60,60);
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
 		0.0f, -0.5f, 0.0f, 0.0f,
@@ -1293,8 +1302,8 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantSunLightDesc, \
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
-	m_sunLightBuff.Direction = Vector3FT({ 1.f, -1.f, 0.f });
-	m_sunLightBuff.Position = Vector3FT({ 0.f,-300.f,-300.f });
+	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -1.f });
+	m_sunLightBuff.Position = Vector3FT({ 0.f, 300.f, 300.f });
 	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
 	m_sunLightBuff.FalloffStart = 0.f;

@@ -49,6 +49,7 @@ namespace wxGame {
 			TYPE_NORMAL_MAP,
 			TYPE_MATERIAL,
 			TYPE_TRANSFORMMATRIX,
+			TYPE_SHADOW_MAP,
 			TYPE_END
 		};
 
@@ -125,6 +126,8 @@ namespace wxGame {
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
 		CD3DX12_RECT m_scissorRect;
+		CD3DX12_VIEWPORT m_shadowmap_Viewport;
+		CD3DX12_RECT m_shadowmap_ScissorRect;
 		ComPtr<IDXGISwapChain3> m_swapChain;ComPtr<ID3D12Resource> textureUploadHeap;
 		ComPtr<ID3D12Device> m_device;
 		ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
