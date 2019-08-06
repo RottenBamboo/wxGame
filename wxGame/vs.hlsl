@@ -46,7 +46,7 @@ PSOutput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal 
 	result.tangentU = tangentU;
 	float4 posW = mul(objC.TransMatrix, float4(position.xyz, 1.0f));
 	result.PositionWorld = mul(viewMatrix, posW.xyz);
-	result.shadowPosition = mul(shadowTransform, posW);
+	result.shadowPosition = mul(shadowTransform, positionH);
 
 	return result;
 }
