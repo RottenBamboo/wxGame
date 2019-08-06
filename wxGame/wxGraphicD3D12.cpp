@@ -293,8 +293,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 		sampler.MipLODBias = 0;
 		sampler.MaxAnisotropy = 0;
-		sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-		sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+		sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 		sampler.MinLOD = 0.0f;
 		sampler.MaxLOD = D3D12_FLOAT32_MAX;
 		sampler.ShaderRegister = 0;
@@ -309,8 +309,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		anisotropicSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 		anisotropicSampler.MipLODBias = 0.f;
 		anisotropicSampler.MaxAnisotropy = 8;
-		anisotropicSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-		anisotropicSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+		anisotropicSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		anisotropicSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 		anisotropicSampler.MinLOD = 0.0f;
 		anisotropicSampler.MaxLOD = D3D12_FLOAT32_MAX;
 		anisotropicSampler.ShaderRegister = 1;
@@ -412,6 +412,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 		psoDesc.SampleMask = UINT_MAX;
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		psoDesc.NumRenderTargets = 1;
@@ -454,6 +455,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		smapPsoDesc.NumRenderTargets = 0;
 		smapPsoDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+		smapPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 		//smapPsoDesc.SampleDesc.Count = 1;
 		//smapPsoDesc.SampleDesc.Quality = 4;
 		//smapPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -471,7 +473,7 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart(); 
-	dsvHandle.ptr += m_DepthStencilDescriptorSize;
+	dsvHandle.ptr += m_DepthStencilDescriptorSize * SHADOW_MAP_DSV_COUNT;
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	// Set null render target because we are only going to draw to
    // depth buffer.  Setting a null render target will disable color writes.

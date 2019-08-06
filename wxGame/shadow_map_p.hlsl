@@ -43,8 +43,8 @@ SamplerState g_samAnisotropicWrap  : register(s1);
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-	float4 rgbaColor = { 0.1f, 0.1f, 0.1f, 0.9f };	
-	rgbaColor *= g_texture.Sample(g_samAnisotropicWrap, input.uv);
+	//float4 rgbaColor;// = { 0.f, 0.f, 0.f, 1.f };
+	float4 rgbaColor = g_texture.Sample(g_samAnisotropicWrap, input.uv);
 
 	return rgbaColor;
 }

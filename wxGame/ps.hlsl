@@ -78,8 +78,8 @@ float4 PSMain(PSOutput input) : SV_TARGET
 	shadowFactor[0] = CalcShadowFactor(input.shadowPosition);
 
 	const float shininess = 1.0f - objM.mroughness;
-	float4 rgbaColor = g_texture.Sample(g_sampler, input.uv);
-	float4 NormalMap = g_normalmap.Sample(g_sampler, input.uv);
+	float4 rgbaColor = g_texture.Sample(g_samAnisotropicWrap, input.uv);
+	float4 NormalMap = g_normalmap.Sample(g_samAnisotropicWrap, input.uv);
 	float3 bumpedNormal = NormalSampleToWorldSpace(NormalMap.rgb, input.normal, input.tangentU);
 	float4 ambient = { 0.15f, 0.15f, 0.15f, 1.f };
 	ambient = ambient * rgbaColor;
