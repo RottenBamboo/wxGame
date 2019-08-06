@@ -309,7 +309,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		anisotropicSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 		anisotropicSampler.MipLODBias = 0.f;
 		anisotropicSampler.MaxAnisotropy = 8;
-		anisotropicSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		anisotropicSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 		anisotropicSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
 		anisotropicSampler.MinLOD = 0.0f;
 		anisotropicSampler.MaxLOD = D3D12_FLOAT32_MAX;
@@ -639,7 +639,7 @@ void wxGame::wxGraphicD3D12::UpdateLightMatrix(void)
 								  Vector4FT({ m_sunLightBuff.Direction.element[0], m_sunLightBuff.Direction.element[1], m_sunLightBuff.Direction.element[2], 0.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-60,60,60,-60,-60,60);
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(6000,-6000,6000,-6000,6000,-6000);
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
 		0.0f, -0.5f, 0.0f, 0.0f,
@@ -1254,11 +1254,6 @@ void wxGraphicD3D12::CreateConstantMatrix()
 
 	constBuff.viewMatrix = BuildViewMatrix(m_defaultCameraPosition, m_defaultLookAt, m_defaultUp);
 	constBuff.perspectiveMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 1000.0f);
-	XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.f, 0.0f, 0.0f); // xz planeVector3FT({ -1.f,-1.f,1.f });
-	XMVECTOR toMainLight = -XMVectorSet(1.f, -1.f, -1.f, 0.0f);
-	XMMATRIX S = XMMatrixShadow(shadowPlane, toMainLight);
-	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
-	constBuff.shadowMatrix = S * shadowOffsetY;
 
 	// Map the constant buffers. Note that unlike D3D11, the resource 
 	// does not need to be unmapped for use by the GPU. In this sample, 
@@ -1302,7 +1297,7 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantSunLightDesc, \
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
-	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -1.f });
+	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -0.75f });
 	m_sunLightBuff.Position = Vector3FT({ 0.f, 300.f, 300.f });
 	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
