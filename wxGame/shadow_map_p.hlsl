@@ -12,8 +12,21 @@ cbuffer cmatrix:register(b1)
 	matrix rotatMatrix;
 	matrix shadowTransform;
 	matrix shadowMatrix;
+	float4x4 shadowTransformTest;
 	float4 cameraPos;
 	float4 viewPos;
+}
+
+cbuffer cLightmatrix:register(b2)
+{
+	matrix lightViewMatrix;
+	matrix lightPerspectiveMatrix;
+	matrix lightRotatMatrix;
+	matrix lightShadowTransform;
+	matrix lightShadowMatrix;
+	float4x4 lightShadowTransformTest;
+	float4 lightCameraPos;
+	float4 lightViewPos;
 }
 
 struct objMaterial

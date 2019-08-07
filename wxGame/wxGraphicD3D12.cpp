@@ -138,7 +138,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
+		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//TransformMatrix(geometry count), light matrix, world related matrix.
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;																	
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -229,6 +229,7 @@ void wxGraphicD3D12::LoadAssets()
 
 	CreateSunLightBuffer();
 	CreateConstantMatrix();
+	CreateLightConstantMatrix();
 	GenerateShadowMap();
 
 	// Close the command list and execute it to begin the initial GPU setup.
@@ -273,7 +274,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 
 		CD3DX12_DESCRIPTOR_RANGE1 ranges[4];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
-		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_CONSTANTMATRIX_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//normal texture, specified shaderRegister number
 		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 4, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//shadow map, specified shaderRegister number
 
@@ -494,7 +495,7 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
@@ -573,6 +574,7 @@ void wxGraphicD3D12::PopulateCommandList()
 void wxGraphicD3D12::OnUpdate()
 {
 	UpdateConstantBuffer(); 
+	UpdateLightConstantBuffer();
 	CheckControllerInput();
 }
 
@@ -634,14 +636,36 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
 }
 
+void wxGraphicD3D12::UpdateLightConstantBuffer(void)
+{
+	lightConstBuff.viewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }), 
+		Vector4FT({ 0.f, 300.f, 300.f, 1.0f}),
+		Vector4FT({ 0.f, 1.f, 0.f, 0.f }));
+
+	memcpy(m_pLightCBDataBegin, &lightConstBuff, sizeof(wxConstMatrix));
+}
+
 void wxGame::wxGraphicD3D12::UpdateLightMatrix(void)
 {
+	XMVECTOR lightPos = { 0.f, 300.f, 300.f };
+	XMVECTOR targetPos = { 0.f, 0.f, 0.f };
+	XMVECTOR lightUp = { 0.f, 1.f, 0.f, 0.f };
+	XMMATRIX lightView = XMMatrixLookAtLH(lightPos, targetPos, lightUp);
+	XMMATRIX lightProj = XMMatrixOrthographicOffCenterLH(-6000, 6000, -6000, 6000, -6000, 6000);
+	XMMATRIX T(
+		0.5f, 0.0f, 0.0f, 0.0f,
+		0.0f, -0.5f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.5f, 0.5f, 0.0f, 1.0f);
+
+	XMMATRIX S = lightView * lightProj*T;
+	XMStoreFloat4x4(&constBuff.shadowTranformTest, S);
 	//fix the light direction temporary
 	Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),\
-								  Vector4FT({ m_sunLightBuff.Direction.element[0], m_sunLightBuff.Direction.element[1], m_sunLightBuff.Direction.element[2], 0.f}), \
+								  Vector4FT({ 0.f, 0.f, 0.f, 1.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(6000,-6000,6000,-6000,6000,-6000);
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(6,-6,6,-6,6,-6);
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
 		0.0f, -0.5f, 0.0f, 0.0f,
@@ -993,7 +1017,7 @@ void wxGraphicD3D12::GenerateShadowMap()
 		IID_PPV_ARGS(&m_shadowMap)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT);
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_CONSTANTMATRIX_COUNT);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -1269,6 +1293,54 @@ void wxGraphicD3D12::CreateConstantMatrix()
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
 	constantBufferView.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
+	constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxConstMatrix));
+	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
+}
+
+void wxGraphicD3D12::CreateLightConstantMatrix()
+{
+	HRESULT hr;
+	// Create CBV resource and bind it to the pipeline by ConstantBufferView.
+		//resource Description for constant buffer
+	D3D12_HEAP_PROPERTIES cbvHeapProperties;
+	cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+	cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	cbvHeapProperties.CreationNodeMask = 1;
+	cbvHeapProperties.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC constantBufferDesc;
+	constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	constantBufferDesc.Alignment = 0;
+	constantBufferDesc.Width = sizeof(wxConstMatrix);
+	constantBufferDesc.Height = 1;
+	constantBufferDesc.DepthOrArraySize = 1;
+	constantBufferDesc.MipLevels = 1;
+	constantBufferDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
+	constantBufferDesc.SampleDesc.Count = 1;
+	constantBufferDesc.SampleDesc.Quality = 0;
+	constantBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	constantBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantBufferDesc, \
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_lightConstantBuffer), (void**)&m_lightConstantBuffer);
+
+	lightConstBuff.viewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),
+		Vector4FT({ 0.f, 300.f, 300.f, 1.0f }),
+		Vector4FT({ 0.f, 1.f, 0.f, 0.f }));
+
+	// Map the constant buffers. Note that unlike D3D11, the resource 
+	// does not need to be unmapped for use by the GPU. In this sample, 
+	// the resource stays 'permenantly' mapped to avoid overhead with 
+	// mapping/unmapping each frame.
+	D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
+	m_lightConstantBuffer->Map(0, &readRange, &m_pLightCBDataBegin);
+	memcpy(m_pLightCBDataBegin, &lightConstBuff, sizeof(wxConstMatrix));
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT);
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
+	constantBufferView.BufferLocation = m_lightConstantBuffer->GetGPUVirtualAddress();
 	constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxConstMatrix));
 	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
 }

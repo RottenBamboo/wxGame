@@ -5,8 +5,21 @@ cbuffer cmatrix:register(b1)
 	matrix rotatMatrix;
 	matrix shadowTransform;
 	matrix shadowMatrix;
+	float4x4 shadowTransformTest;
 	float4 cameraPos;
 	float4 viewPos;
+}
+
+cbuffer cLightmatrix:register(b2)
+{
+	matrix lightViewMatrix;
+	matrix lightPerspectiveMatrix;
+	matrix lightRotatMatrix;
+	matrix lightShadowTransform;
+	matrix lightShadowMatrix;
+	float4x4 lightShadowTransformTest;
+	float4 lightCameraPos;
+	float4 lightViewPos;
 }
 
 struct PSInput
@@ -46,7 +59,7 @@ PSOutput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal 
 	result.tangentU = tangentU;
 	float4 posW = mul(objC.TransMatrix, float4(position.xyz, 1.0f));
 	result.positionH = mul(viewMatrix, posW.xyz);
-	result.shadowPosition = mul(shadowTransform, result.PositionWorld);
+	result.shadowPosition = mul(shadowTransformTest, result.PositionWorld);
 
 	return result;
 }

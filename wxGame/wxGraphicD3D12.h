@@ -11,6 +11,7 @@
 #define SUNLIGHT_COUNT (int)1
 #define SHADOW_MAP_DSV_COUNT (int)1
 #define CONSTANTMATRIX_COUNT (int)1
+#define SHADOW_CONSTANTMATRIX_COUNT (int)1
 #define GAMEPAD_LEFT_THUMB_DEADZONE 16354 
 #define GAMEPAD_RIGHT_THUMB_DEADZONE 16354
 
@@ -76,7 +77,8 @@ namespace wxGame {
 			Matrix4X4FT perspectiveMatrix;
 			Matrix4X4FT rotatMatrix;
 			Matrix4X4FT shadowTransform;
-			XMMATRIX shadowMatrix;
+			XMMATRIX shadowMatrix; 
+			XMFLOAT4X4 shadowTranformTest;
 			Vector4FT cameraPos;
 			Vector4FT viewPos;
 
@@ -116,7 +118,9 @@ namespace wxGame {
 		};
 
 		void* m_pCBDataBegin;			//constant buffer data pointer
+		void* m_pLightCBDataBegin;			//Light constant buffer data pointer
 		wxConstMatrix constBuff;
+		wxConstMatrix lightConstBuff;
 		void* m_pwxMatDataBegin;
 		wxLight m_sunLightBuff;
 		void* m_pSunLightDataBegin;
@@ -133,6 +137,7 @@ namespace wxGame {
 		ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 		ComPtr<ID3D12Resource> m_depthStencil;
 		ComPtr<ID3D12Resource> m_constantBuffer;
+		ComPtr<ID3D12Resource> m_lightConstantBuffer;
 		ComPtr<ID3D12Resource> m_sunLight;
 		ComPtr<ID3D12Resource> m_indexBuffer;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
@@ -198,10 +203,12 @@ namespace wxGame {
 		void CreateSunLightBuffer();
 		void CreateObjConst(std::vector<wxObjConst>&);
 		void CreateConstantMatrix();
+		void CreateLightConstantMatrix();
 		void PopulateCommandList();
 		void PopulateShadowMapCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
+		void UpdateLightConstantBuffer(void);
 		void UpdateLightMatrix(void);
 		void CheckControllerInput(void);
 		int	GetSceneGeometryNodeCount();
