@@ -11,22 +11,13 @@ cbuffer cmatrix:register(b1)
 	matrix perspectiveMatrix;
 	matrix rotatMatrix;
 	matrix shadowTransform;
+	matrix lightOthgraphicMatrix;
+	matrix lightViewMatrix1;
+	matrix lightTransformNDC;
 	matrix shadowMatrix;
 	float4x4 shadowTransformTest;
 	float4 cameraPos;
 	float4 viewPos;
-}
-
-cbuffer cLightmatrix:register(b2)
-{
-	matrix lightViewMatrix;
-	matrix lightPerspectiveMatrix;
-	matrix lightRotatMatrix;
-	matrix lightShadowTransform;
-	matrix lightShadowMatrix;
-	float4x4 lightShadowTransformTest;
-	float4 lightCameraPos;
-	float4 lightViewPos;
 }
 
 struct objMaterial
@@ -56,7 +47,5 @@ SamplerState g_samAnisotropicWrap  : register(s1);
 
 void PSMain(PSInput input)
 {
-	//float4 rgbaColor;// = { 0.f, 0.f, 0.f, 1.f };
 	float4 rgbaColor = g_texture.Sample(g_samAnisotropicWrap, input.uv);
-
 }

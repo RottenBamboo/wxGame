@@ -77,6 +77,9 @@ namespace wxGame {
 			Matrix4X4FT perspectiveMatrix;
 			Matrix4X4FT rotatMatrix;
 			Matrix4X4FT shadowTransform;
+			Matrix4X4FT lightOthgraphicMatrix;
+			Matrix4X4FT lightViewMatrix;
+			Matrix4X4FT lightTransformNDC;
 			XMMATRIX shadowMatrix; 
 			XMFLOAT4X4 shadowTranformTest;
 			Vector4FT cameraPos;
@@ -203,12 +206,10 @@ namespace wxGame {
 		void CreateSunLightBuffer();
 		void CreateObjConst(std::vector<wxObjConst>&);
 		void CreateConstantMatrix();
-		void CreateLightConstantMatrix();
 		void PopulateCommandList();
 		void PopulateShadowMapCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
-		void UpdateLightConstantBuffer(void);
 		void UpdateLightMatrix(void);
 		void CheckControllerInput(void);
 		int	GetSceneGeometryNodeCount();

@@ -138,7 +138,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
+		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//TransformMatrix(geometry count), light matrix, world related matrix.
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;																	
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -229,7 +229,6 @@ void wxGraphicD3D12::LoadAssets()
 
 	CreateSunLightBuffer();
 	CreateConstantMatrix();
-	CreateLightConstantMatrix();
 	GenerateShadowMap();
 
 	// Close the command list and execute it to begin the initial GPU setup.
@@ -274,7 +273,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 
 		CD3DX12_DESCRIPTOR_RANGE1 ranges[4];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
-		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_CONSTANTMATRIX_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//normal texture, specified shaderRegister number
 		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 4, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//shadow map, specified shaderRegister number
 
@@ -349,6 +348,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 
 		ComPtr<ID3DBlob> vertexShader;
 		ComPtr<ID3DBlob> pixelShader;
+		ComPtr<ID3DBlob> vertexShader1;
+		ComPtr<ID3DBlob> pixelShader1;
 
 #if defined(_DEBUG)
 		// Enable better shader debugging with the graphics debugging tools.
@@ -375,7 +376,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		RasterizerDefault.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 		RasterizerDefault.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
 		RasterizerDefault.DepthClipEnable = TRUE;
-		RasterizerDefault.MultisampleEnable = TRUE;
+		RasterizerDefault.MultisampleEnable = FALSE;
 		RasterizerDefault.AntialiasedLineEnable = FALSE;
 		RasterizerDefault.ForcedSampleCount = 0;
 		RasterizerDefault.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
@@ -423,14 +424,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_defaultPipelineState)));
 
-		const D3D_SHADER_MACRO alphaTestDefines[] =
-		{
-			"ALPHA_TEST", "1",
-			NULL, NULL
-		};
-
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_p.hlsl").c_str(), alphaTestDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader1, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader1, nullptr));
 
 		D3D12_RASTERIZER_DESC smapRasterizer;
 		smapRasterizer.FillMode = D3D12_FILL_MODE_SOLID;
@@ -440,7 +435,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapRasterizer.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 		smapRasterizer.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
 		smapRasterizer.DepthClipEnable = TRUE;
-		smapRasterizer.MultisampleEnable = TRUE;
+		smapRasterizer.MultisampleEnable = FALSE;
 		smapRasterizer.AntialiasedLineEnable = FALSE;
 		smapRasterizer.ForcedSampleCount = 0;
 		smapRasterizer.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
@@ -448,8 +443,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC smapPsoDesc = psoDesc;
 		smapPsoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
 		smapPsoDesc.pRootSignature = m_rootSignature.Get();
-		smapPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-		smapPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
+		smapPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader1.Get());
+		smapPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader1.Get());
 		//smapPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		//smapPsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		smapPsoDesc.SampleMask = UINT_MAX;
@@ -473,12 +468,13 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 	// Change to DEPTH_WRITE.
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart(); 
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	dsvHandle.ptr += m_DepthStencilDescriptorSize * SHADOW_MAP_DSV_COUNT;
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	// Set null render target because we are only going to draw to
    // depth buffer.  Setting a null render target will disable color writes.
    // Note the active PSO also must specify a render target count of 0.
+	m_commandList->OMSetStencilRef(0);
 	m_commandList->OMSetRenderTargets(0, nullptr, false, &dsvHandle);
 	m_commandList->SetPipelineState(m_shadowMapPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -495,7 +491,7 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
@@ -535,13 +531,13 @@ void wxGraphicD3D12::PopulateCommandList()
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
 	m_commandList->ClearDepthStencilView(m_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
 
 	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
-	m_commandList->OMSetStencilRef(1);
+	m_commandList->OMSetStencilRef(0);
 	m_commandList->SetPipelineState(m_defaultPipelineState.Get());
 	// Record commands.
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -574,7 +570,6 @@ void wxGraphicD3D12::PopulateCommandList()
 void wxGraphicD3D12::OnUpdate()
 {
 	UpdateConstantBuffer(); 
-	UpdateLightConstantBuffer();
 	CheckControllerInput();
 }
 
@@ -636,36 +631,14 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
 }
 
-void wxGraphicD3D12::UpdateLightConstantBuffer(void)
-{
-	lightConstBuff.viewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }), 
-		Vector4FT({ 0.f, 300.f, 300.f, 1.0f}),
-		Vector4FT({ 0.f, 1.f, 0.f, 0.f }));
-
-	memcpy(m_pLightCBDataBegin, &lightConstBuff, sizeof(wxConstMatrix));
-}
-
 void wxGame::wxGraphicD3D12::UpdateLightMatrix(void)
 {
-	XMVECTOR lightPos = { 0.f, 300.f, 300.f };
-	XMVECTOR targetPos = { 0.f, 0.f, 0.f };
-	XMVECTOR lightUp = { 0.f, 1.f, 0.f, 0.f };
-	XMMATRIX lightView = XMMatrixLookAtLH(lightPos, targetPos, lightUp);
-	XMMATRIX lightProj = XMMatrixOrthographicOffCenterLH(-6000, 6000, -6000, 6000, -6000, 6000);
-	XMMATRIX T(
-		0.5f, 0.0f, 0.0f, 0.0f,
-		0.0f, -0.5f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		0.5f, 0.5f, 0.0f, 1.0f);
-
-	XMMATRIX S = lightView * lightProj*T;
-	XMStoreFloat4x4(&constBuff.shadowTranformTest, S);
 	//fix the light direction temporary
 	Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),\
 								  Vector4FT({ 0.f, 0.f, 0.f, 1.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(6,-6,6,-6,6,-6);
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(6000,-6000,6000,-6000,6000,-6000);
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
 		0.0f, -0.5f, 0.0f, 0.0f,
@@ -673,6 +646,9 @@ void wxGame::wxGraphicD3D12::UpdateLightMatrix(void)
 		0.5f, 0.5f, 0.0f, 1.0f };
 
 	constBuff.shadowTransform = MatrixMultiMatrix(MatrixMultiMatrix(LightViewMatrix, LightOthgraphicMatrix), LightTransformNDC);
+	constBuff.lightOthgraphicMatrix = LightOthgraphicMatrix;
+	constBuff.lightViewMatrix = LightViewMatrix;
+	constBuff.lightTransformNDC = LightTransformNDC;
 }
 
 void wxGraphicD3D12::LoadDataFromOGEX(std::vector<std::string>& title)
@@ -1017,7 +993,7 @@ void wxGraphicD3D12::GenerateShadowMap()
 		IID_PPV_ARGS(&m_shadowMap)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_CONSTANTMATRIX_COUNT);
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -1297,54 +1273,6 @@ void wxGraphicD3D12::CreateConstantMatrix()
 	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
 }
 
-void wxGraphicD3D12::CreateLightConstantMatrix()
-{
-	HRESULT hr;
-	// Create CBV resource and bind it to the pipeline by ConstantBufferView.
-		//resource Description for constant buffer
-	D3D12_HEAP_PROPERTIES cbvHeapProperties;
-	cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-	cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	cbvHeapProperties.CreationNodeMask = 1;
-	cbvHeapProperties.VisibleNodeMask = 1;
-
-	D3D12_RESOURCE_DESC constantBufferDesc;
-	constantBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	constantBufferDesc.Alignment = 0;
-	constantBufferDesc.Width = sizeof(wxConstMatrix);
-	constantBufferDesc.Height = 1;
-	constantBufferDesc.DepthOrArraySize = 1;
-	constantBufferDesc.MipLevels = 1;
-	constantBufferDesc.Format = DXGI_FORMAT_UNKNOWN;// DXGI_FORMAT_D24_UNORM_S8_UINT;
-	constantBufferDesc.SampleDesc.Count = 1;
-	constantBufferDesc.SampleDesc.Quality = 0;
-	constantBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	constantBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantBufferDesc, \
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_lightConstantBuffer), (void**)&m_lightConstantBuffer);
-
-	lightConstBuff.viewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),
-		Vector4FT({ 0.f, 300.f, 300.f, 1.0f }),
-		Vector4FT({ 0.f, 1.f, 0.f, 0.f }));
-
-	// Map the constant buffers. Note that unlike D3D11, the resource 
-	// does not need to be unmapped for use by the GPU. In this sample, 
-	// the resource stays 'permenantly' mapped to avoid overhead with 
-	// mapping/unmapping each frame.
-	D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
-	m_lightConstantBuffer->Map(0, &readRange, &m_pLightCBDataBegin);
-	memcpy(m_pLightCBDataBegin, &lightConstBuff, sizeof(wxConstMatrix));
-	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT);
-
-	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
-	constantBufferView.BufferLocation = m_lightConstantBuffer->GetGPUVirtualAddress();
-	constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxConstMatrix));
-	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
-}
-
 void wxGraphicD3D12::CreateSunLightBuffer()
 {
 	HRESULT hr;
@@ -1371,8 +1299,8 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	hr = m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &constantSunLightDesc, \
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
-	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -0.75f });
-	m_sunLightBuff.Position = Vector3FT({ 0.f, 300.f, 300.f });
+	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -1.f });
+	m_sunLightBuff.Position = Vector3FT({ 0.f, 100.f, 0.f });
 	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
 	m_sunLightBuff.FalloffStart = 0.f;
