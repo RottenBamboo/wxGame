@@ -19,7 +19,11 @@
 #include <wrl.h>
 #include <shellapi.h>
 
+#include <time.h>
+
 #ifndef ALIGN
 #define ALIGN(x, a)         (((x) + ((a) - 1)) & ~((a) - 1))
 #endif
 #define ALIGN_256(x)	((x % 256)?(((x / 256) + 1) * 256):(x))
+
+typedef long long long_int64;
