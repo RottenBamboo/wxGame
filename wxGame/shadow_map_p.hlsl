@@ -47,5 +47,5 @@ SamplerState g_samAnisotropicWrap  : register(s1);
 
 void PSMain(PSInput input)
 {
-	float4 rgbaColor = g_texture.Sample(g_samAnisotropicWrap, input.uv);
+	float4 rgbaColor = g_shadowMap.Sample(g_samAnisotropicWrap, input.uv);
 }

@@ -559,6 +559,9 @@ void wxGraphicD3D12::PopulateCommandList()
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
+		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
@@ -574,8 +577,8 @@ void wxGraphicD3D12::PopulateCommandList()
 // Update frame-based values.
 void wxGraphicD3D12::OnUpdate(wxTimer *timer)
 {
-	UpdateConstantBuffer(); 
 	UpdateSunLight(timer);
+	UpdateConstantBuffer(); 
 	CheckControllerInput();
 }
 
@@ -632,51 +635,73 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 	////angleAxisY = 0;
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.cameraPos = m_defaultCameraPosition;
-	constBuff.viewPos = m_defaultLookAt; 
-	UpdateLightMatrix();
+	constBuff.viewPos = m_defaultLookAt;
+	UpdateShadowMatrix();
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
 }
 
-void wxGame::wxGraphicD3D12::UpdateLightMatrix(void)
-{
+void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
+{	
 	//fix the light direction temporary
-	//Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),\
+	Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),\
 								  Vector4FT({ 0.f, 0.f, 0.f, 1.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	//Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-6000,6000,6000,-6000,6,6000);
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-6000,6000,6000,-6000,-6000,6000);
 	//Matrix4X4FT LightOthgraphicMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 1000.0f);
-	//Matrix4X4FT LightTransformNDC = {
-	//	0.5f, 0.0f, 0.0f, 0.0f,
-	//	0.0f, -0.5f, 0.0f, 0.0f,
-	//	0.0f, 0.0f, 1.0f, 0.0f,
-	//	0.5f, 0.5f, 0.0f, 1.0f };
+	Matrix4X4FT LightTransformNDC = {
+		0.5f, 0.0f, 0.0f, 0.0f,
+		0.0f, -0.5f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.5f, 0.5f, 0.0f, 1.0f };
 
-	//constBuff.shadowTransform = MatrixMultiMatrix(MatrixMultiMatrix(LightViewMatrix, LightOthgraphicMatrix), LightTransformNDC);
-	//constBuff.lightOthgraphicMatrix = LightOthgraphicMatrix;
-	//constBuff.lightViewMatrix = LightViewMatrix;
-	//constBuff.lightTransformNDC = LightTransformNDC;
-	UpdateShadowTransform();
+	constBuff.shadowTransform = MatrixMultiMatrix(MatrixMultiMatrix(LightViewMatrix, LightOthgraphicMatrix), LightTransformNDC);
+	constBuff.lightOthgraphicMatrix = LightOthgraphicMatrix;
+	constBuff.lightViewMatrix = LightViewMatrix;
+	constBuff.lightTransformNDC = LightTransformNDC;
+	//UpdateShadowTransform();
+}
+
+void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
+{
+	mSunAngleAxisY += mSunAngleAxisYPerSec * timer->DeltaTime();
+	int k = mSunAngleAxisY / 360;
+	mSunAngleAxisY = mSunAngleAxisY - k * 360;
+	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -1.f });//don't accumulate the direction value,but set default value every time;
+	Vector4FT Direction = { m_sunLightBuff.Direction.element[0], m_sunLightBuff.Direction.element[1], m_sunLightBuff.Direction.element[2], 0.f };
+	RotateYAxis(Direction, mSunAngleAxisY);
+	m_sunLightBuff.Direction.element[0] = Direction.element[0];
+	m_sunLightBuff.Direction.element[1] = Direction.element[1];
+	m_sunLightBuff.Direction.element[2] = Direction.element[2];
+
+	m_sunLightBuff.Position = Vector3FT({ 300.f, 300.f, -300.f });
+	Vector4FT Position = { m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 0.f };
+	RotateYAxis(Position, mSunAngleAxisY);
+	m_sunLightBuff.Position.element[0] = Position.element[0];
+	m_sunLightBuff.Position.element[1] = Position.element[1];
+	m_sunLightBuff.Position.element[2] = Position.element[2];
+
+	memcpy(m_pSunLightDataBegin, &m_sunLightBuff, sizeof(wxLight));
 }
 
 void wxGraphicD3D12::UpdateShadowTransform()
 {
 	// Only the first "main" light casts a shadow.
-	XMVECTOR lightPos = { 0.f,300.f,300.f,1.f };
-	XMVECTOR targetPos = {0.f,0.f,0.f,1.f};
-	XMVECTOR lightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	constBuff.lightViewMatrix = XMMatrixLookAtLH(lightPos, targetPos, lightUp);
+	//XMVECTOR lightPos = { 0.f,300.f,300.f,1.f };
+	//XMVECTOR targetPos = {0.f,0.f,0.f,1.f};
+	//XMVECTOR lightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	//constBuff.lightViewMatrix = XMMatrixLookAtLH(lightPos, targetPos, lightUp);
 
-	constBuff.lightOthgraphicMatrix = XMMatrixOrthographicOffCenterLH(-1.f, 0.f, 0.5f, -0.5f, 1.f, 1000.f);
+	//constBuff.lightOthgraphicMatrix = XMMatrixOrthographicOffCenterLH(-1.f, 0.f, 0.5f, -0.5f, 1.f, 1000.f);
 
 	// Transform NDC space [-1,+1]^2 to texture space [0,1]^2
-	XMMATRIX T(
-		0.5f, 0.0f, 0.0f, 0.0f,
-		0.0f, -0.5f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		0.5f, 0.5f, 0.0f, 1.0f);
-	constBuff.lightTransformNDC = T;
-	constBuff.shadowMatrix = constBuff.lightViewMatrix * constBuff.lightOthgraphicMatrix * constBuff.lightTransformNDC;
+	//XMMATRIX T(
+	//	0.5f, 0.0f, 0.0f, 0.0f,
+	//	0.0f, -0.5f, 0.0f, 0.0f,
+	//	0.0f, 0.0f, 1.0f, 0.0f,
+	//	0.5f, 0.5f, 0.0f, 1.0f);
+	//constBuff.lightTransformNDC = T;
+	//constBuff.shadowMatrix = constBuff.lightViewMatrix * constBuff.lightOthgraphicMatrix * constBuff.lightTransformNDC;
 }
 
 void wxGraphicD3D12::LoadDataFromOGEX(std::vector<std::string>& title)
@@ -1045,21 +1070,6 @@ void wxGraphicD3D12::GenerateShadowMap()
 
 }
 
-void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
-{
-	mSunAngleAxisY += mSunAngleAxisYPerSec * timer->DeltaTime();
-	int k = mSunAngleAxisY / 360;
-	mSunAngleAxisY = mSunAngleAxisY - k * 360;
-	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -1.f });//don't accumulate the direction value,but set default value every time;
-	Vector4FT Direction = { m_sunLightBuff.Direction.element[0], m_sunLightBuff.Direction.element[1], m_sunLightBuff.Direction.element[2], 0.f };
-	RotateYAxis(Direction, mSunAngleAxisY);
-	
-	m_sunLightBuff.Direction.element[0] = Direction.element[0];
-	m_sunLightBuff.Direction.element[1] = Direction.element[1];
-	m_sunLightBuff.Direction.element[2] = Direction.element[2];
-
-	memcpy(m_pSunLightDataBegin, &m_sunLightBuff, sizeof(wxLight));
-}
 
 void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 {
@@ -1345,7 +1355,7 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
 	m_sunLightBuff.Direction = Vector3FT({ 0.f, 0.f, -1.f });
-	m_sunLightBuff.Position = Vector3FT({ 0.f, 0.f, 0.f });
+	m_sunLightBuff.Position = Vector3FT({ 300.f, 300.f, -300.f });
 	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
 	m_sunLightBuff.FalloffStart = 0.f;
