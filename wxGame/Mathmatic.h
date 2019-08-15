@@ -593,9 +593,9 @@ namespace Mathmatic
 	{
 		float cos = cosf(angle), sin = sinf(angle);
 		float tempElem[] = { cos,  0.0f, -sin, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			sin,  0.0f,  cos, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f, };
+							 0.0f, 1.0f, 0.0f, 0.0f,
+							 sin,  0.0f,  cos, 0.0f,
+							 0.0f, 0.0f, 0.0f, 1.0f, };
 		Matrix4X4FT result(16, tempElem);
 		VectorMultiMatrix(vec, result);
 	}

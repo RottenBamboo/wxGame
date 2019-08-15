@@ -93,7 +93,8 @@ LRESULT CALLBACK Win32Application::WindowProc(HWND hWnd, UINT message, WPARAM wP
 	case WM_PAINT:
 		if (pSample)
 		{
-			pSample->OnUpdate();
+			pSample->GetTimer()->Tick();
+			pSample->OnUpdate(pSample->GetTimer());
 			pSample->OnRender();
 		}
 		return 0;

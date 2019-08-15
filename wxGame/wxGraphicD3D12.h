@@ -34,7 +34,7 @@ namespace wxGame {
 		wxGraphicD3D12(UINT width, UINT height, std::wstring name);
 
 		virtual void OnInit();
-		virtual void OnUpdate();
+		virtual void OnUpdate(wxTimer *timer);
 		virtual void OnRender();
 		virtual void OnDestroy();
 
@@ -77,9 +77,9 @@ namespace wxGame {
 			Matrix4X4FT perspectiveMatrix;
 			Matrix4X4FT rotatMatrix;
 			Matrix4X4FT shadowTransform;
-			Matrix4X4FT lightOthgraphicMatrix;
-			Matrix4X4FT lightViewMatrix;
-			Matrix4X4FT lightTransformNDC;
+			XMMATRIX lightOthgraphicMatrix;
+			XMMATRIX lightViewMatrix;
+			XMMATRIX lightTransformNDC;
 			XMMATRIX shadowMatrix; 
 			XMFLOAT4X4 shadowTranformTest;
 			Vector4FT cameraPos;
@@ -181,6 +181,8 @@ namespace wxGame {
 		D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvSunLight;
 
 		float angleAxisY;
+		float mSunAngleAxisY;
+		double mSunAngleAxisYPerSec;
 		// Synchronization objects.
 		UINT m_frameIndex;
 		HANDLE m_fenceEvent;
@@ -211,9 +213,11 @@ namespace wxGame {
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
 		void UpdateLightMatrix(void);
+		void UpdateShadowTransform();
 		void CheckControllerInput(void);
 		int	GetSceneGeometryNodeCount();
 		void GenerateShadowMap();
+		void UpdateSunLight(wxTimer *timer);
 
 		float m_cameraMoveBaseSpeed;// = 0.5f;
 		float m_cameraRotationSpeed;// = 0.015f;

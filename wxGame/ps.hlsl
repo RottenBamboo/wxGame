@@ -95,9 +95,9 @@ float4 PSMain(PSOutput input) : SV_TARGET
 	float3 originPos = { 0.f, 0.f, 0.f };
 	float3 viewDirection = normalize(cameraPos - input.PositionWorld);
 	//float3 directLight = ComputeDirectionalLight(light, mat, input.normal, viewDirection);
-	float3 directLight = ComputeDirectionalLight(light, mat, bumpedNormal, viewDirection) * shadowFactor[0];
+	float3 directLight = ComputeDirectionalLight(light, mat, bumpedNormal, viewDirection)*shadowFactor[0];
 	float4 litColor;
-	litColor.xyz = directLight + ambient;
+	litColor.xyz = directLight + ambient; 
 	return litColor;
 }
 

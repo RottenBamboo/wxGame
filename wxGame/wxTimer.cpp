@@ -7,9 +7,8 @@ void wxTimer::Tick()
 		mDeltaTime = 0.0f;
 		return;
 	}
-	tm temp = tm();
-	gmtime_s(&temp, &mCurrTimeStamp);
-	mDeltaTime = mCurrTimeStamp - mPrevTimeStamp;
+	mCurrTimeStamp = clock();
+	mDeltaTime = (mCurrTimeStamp - mPrevTimeStamp) * mSecondsPerCount;
 	mPrevTimeStamp = mCurrTimeStamp;
 	if (mDeltaTime < 0.0f)
 	{
@@ -19,8 +18,7 @@ void wxTimer::Tick()
 
 void wxTimer::Reset()
 {
-	tm temp = tm();
-	gmtime_s(&temp, &mCurrTimeStamp);
+	mCurrTimeStamp = clock();
 
 	mBaseTime = mCurrTimeStamp;
 	mPrevTimeStamp = mCurrTimeStamp;
@@ -32,8 +30,7 @@ void wxTimer::Stop()
 {
 	if (!mStopped)
 	{
-		tm temp = tm();
-		gmtime_s(&temp, &mCurrTimeStamp);
+		mCurrTimeStamp = clock();
 
 		mStopTimeStamp = mCurrTimeStamp;
 		mStopped = true;
@@ -42,9 +39,8 @@ void wxTimer::Stop()
 
 void wxTimer::Start()
 {
-	tm temp = tm(); 
 	time_t startTime;
-	gmtime_s(&temp, &startTime);  
+	startTime = clock();
 
 	if (mStopped)
 	{
@@ -56,7 +52,7 @@ void wxTimer::Start()
 	}
 }
 
-time_t wxTimer::DeltaTime()
+double wxTimer::DeltaTime()
 {
 	return mDeltaTime;
 }

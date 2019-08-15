@@ -7,7 +7,8 @@ GraphicD3D12::GraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_width(width),
 	m_height(height),
 	m_title(name),
-	m_useWarpDevice(false)
+	m_useWarpDevice(false),
+	mTimer()
 {
 	WCHAR assetsPath[512];
 	GetAssetsPath(assetsPath, _countof(assetsPath));

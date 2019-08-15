@@ -2,6 +2,7 @@
 
 #include "DXSampleHelper.h"
 #include "Win32Application.h"
+#include "wxTimer.h"
 
 class GraphicD3D12
 {
@@ -10,7 +11,7 @@ public:
 	virtual ~GraphicD3D12();
 
 	virtual void OnInit() = 0;
-	virtual void OnUpdate() = 0;
+	virtual void OnUpdate(wxTimer *timer) = 0;
 	virtual void OnRender() = 0;
 	virtual void OnDestroy() = 0;
 
@@ -25,6 +26,7 @@ public:
 
 	void ParseCommandLineArgs(_In_reads_(argc) WCHAR* argv[], int argc);
 
+	inline wxTimer* GetTimer() { return &mTimer; }
 protected:
 	std::wstring GetAssetFullPath(LPCWSTR assetName);
 	std::wstring GetPathFromRoot(LPCWSTR assetName);
@@ -38,11 +40,11 @@ protected:
 
 	// Adapter info.
 	bool m_useWarpDevice;
-
 private:
 	// Root assets path.
 	std::wstring m_assetsPath;
 
 	// Window title.
 	std::wstring m_title;
+	wxTimer mTimer;
 };
