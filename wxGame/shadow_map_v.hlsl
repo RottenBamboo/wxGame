@@ -31,7 +31,8 @@ PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal :
 {
 	PSInput result;
 	objConst objC = g_objConst[0];
-	result.position = mul(lightViewMatrix1, position);
+	//result.position = mul(lightViewMatrix1, position);
+	result.position = mul(lightOthgraphicMatrix, mul(lightViewMatrix1, mul(objC.TransMatrix, position)));
 	result.uv.x = uv.x;
 	result.uv.y = 1.f - uv.y;//v should be vertically reversed because the texture mapping is opposite direction when right hand coordinate transformed to left hand coordinate.
 	result.normal = normal;

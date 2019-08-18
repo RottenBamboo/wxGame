@@ -647,7 +647,7 @@ void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 								  Vector4FT({ 0.f, 0.f, 0.f, 1.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-6000,6000,6000,-6000,-6000,6000);
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-6000,6000,6000,-6000,1,1000);
 	//Matrix4X4FT LightOthgraphicMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 1000.0f);
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
@@ -674,8 +674,8 @@ void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
 	m_sunLightBuff.Direction.element[1] = Direction.element[1];
 	m_sunLightBuff.Direction.element[2] = Direction.element[2];
 
-	m_sunLightBuff.Position = Vector3FT({ 300.f, 300.f, -300.f });
-	Vector4FT Position = { m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 0.f };
+	m_sunLightBuff.Position = Vector3FT({ 0.f, 300.f, 300.f });
+	Vector4FT Position = { m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f };
 	RotateYAxis(Position, mSunAngleAxisY);
 	m_sunLightBuff.Position.element[0] = Position.element[0];
 	m_sunLightBuff.Position.element[1] = Position.element[1];
