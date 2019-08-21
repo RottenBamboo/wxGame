@@ -78,7 +78,7 @@ float4 PSMain(PSOutput input) : SV_TARGET
 	objMaterial objM = g_objMaterial[0]; 
 
 	// Only the first light casts a shadow.
-	float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
+	float3 shadowFactor = float3(1.0f, 1.0f, 0.0f);
 	shadowFactor[0] = CalcShadowFactor(input.shadowPosition);
 
 	const float shininess = 1.0f - objM.mroughness;

@@ -86,7 +86,7 @@ float CalcShadowFactor(float4 shadowPosition)
 	for (int i = 0; i < 9; ++i)
 	{
 		percentLit += g_shadowMap.SampleCmpLevelZero(g_samShadow,
-			shadowPosition.xy + offsets[i], depth).r;
+			shadowPosition.xy + offsets[i], 1).r;
 	}
 
 	return percentLit / 9.0f;

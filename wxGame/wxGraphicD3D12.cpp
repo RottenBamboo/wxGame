@@ -18,7 +18,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_numIndices(0),
 	angleAxisY(0.f),
 	mSunAngleAxisY(0.f),
-	mSunAngleAxisYPerSec(1.f),
+	mSunAngleAxisYPerSec(0.5f),
 	m_frameIndex(0),
 	m_fenceEvent(HANDLE()),
 	m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
@@ -295,7 +295,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 		sampler.MipLODBias = 0;
 		sampler.MaxAnisotropy = 0;
-		sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
 		sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 		sampler.MinLOD = 0.0f;
 		sampler.MaxLOD = D3D12_FLOAT32_MAX;
@@ -311,7 +311,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		anisotropicSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 		anisotropicSampler.MipLODBias = 0.f;
 		anisotropicSampler.MaxAnisotropy = 8;
-		anisotropicSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		anisotropicSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
 		anisotropicSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 		anisotropicSampler.MinLOD = 0.0f;
 		anisotropicSampler.MaxLOD = D3D12_FLOAT32_MAX;
@@ -329,7 +329,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		shadowSampler.MipLODBias = 0.f;
 		shadowSampler.MaxAnisotropy = 16;
 		shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-		shadowSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+		shadowSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 		shadowSampler.MinLOD = 0.0f;
 		shadowSampler.MaxLOD = D3D12_FLOAT32_MAX;
 		shadowSampler.ShaderRegister = 2;
@@ -413,7 +413,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		//psoDesc.DepthStencilState = defaultDepthStencil;
 
-		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.RasterizerState = RasterizerDefault;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
@@ -643,11 +643,12 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 {	
 	//fix the light direction temporary
+	//Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], -m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),
 	Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),\
 								  Vector4FT({ 0.f, 0.f, 0.f, 1.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-6000,6000,6000,-6000,1,1000);
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-100,100,100,-100,-1000,1000);
 	//Matrix4X4FT LightOthgraphicMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 1000.0f);
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
