@@ -704,16 +704,4 @@ namespace Mathmatic
 		};
 		return othographicMatrix;
 	}
-
-	/*template<template<int, int, typename> class TT = Matrix>
-	Matrix4X4FT BuildTextureMatrix()
-	{
-		return MAtrix4X4 textureMatrix = {
-		0.5f, 0.f, 0.f, 0.f,
-		0.f, -0.5f, 0.f, 0.f,
-		0.f, 0.f, 1.f, 0.f,
-		0.5f, 0.5f, 0.f, 1.f
-		}
-	}*/
-
 }

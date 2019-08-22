@@ -408,11 +408,6 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		psoDesc.pRootSignature = m_rootSignature.Get();
 		psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
 		psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-
-		//psoDesc.RasterizerState = RasterizerDefault;// CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		//psoDesc.DepthStencilState = defaultDepthStencil;
-
 		psoDesc.RasterizerState = RasterizerDefault;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -447,17 +442,11 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapPsoDesc.pRootSignature = m_rootSignature.Get();
 		smapPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader1.Get());
 		smapPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader1.Get());
-		//smapPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		//smapPsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		smapPsoDesc.SampleMask = UINT_MAX;
 		smapPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		smapPsoDesc.NumRenderTargets = 0;
 		smapPsoDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
 		smapPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-		//smapPsoDesc.SampleDesc.Count = 1;
-		//smapPsoDesc.SampleDesc.Quality = 4;
-		//smapPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		//smapPsoDesc.RasterizerState = smapRasterizer;
 		smapPsoDesc.RasterizerState.DepthBias = 100000;
 		smapPsoDesc.RasterizerState.DepthBiasClamp = 0.0f;
 		smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
@@ -625,14 +614,6 @@ void wxGraphicD3D12::WaitForPreviousFrame()
 
 void wxGraphicD3D12::UpdateConstantBuffer(void)
 {
-	//angleAxisY -= 0.01f;
-	//if (angleAxisY < -360.f)
-	//{
-	//	angleAxisY = 0.f;
-	//}
-	////int k = static_cast<int>(angleAxisY) / 360;
-	////angleAxisY = angleAxisY + k * 360;
-	////angleAxisY = 0;
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.cameraPos = m_defaultCameraPosition;
 	constBuff.viewPos = m_defaultLookAt;
@@ -643,13 +624,11 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 {	
 	//fix the light direction temporary
-	//Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], -m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),
 	Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),\
 								  Vector4FT({ 0.f, 0.f, 0.f, 1.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
 	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-100,100,100,-100,-1000,1000);
-	//Matrix4X4FT LightOthgraphicMatrix = BuildPerspectiveMatrixForLH(0.25f * PI, m_aspectRatio, 1.0f, 1000.0f);
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
 		0.0f, -0.5f, 0.0f, 0.0f,
@@ -660,7 +639,6 @@ void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 	constBuff.lightOthgraphicMatrix = LightOthgraphicMatrix;
 	constBuff.lightViewMatrix = LightViewMatrix;
 	constBuff.lightTransformNDC = LightTransformNDC;
-	//UpdateShadowTransform();
 }
 
 void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
@@ -683,26 +661,6 @@ void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
 	m_sunLightBuff.Position.element[2] = Position.element[2];
 
 	memcpy(m_pSunLightDataBegin, &m_sunLightBuff, sizeof(wxLight));
-}
-
-void wxGraphicD3D12::UpdateShadowTransform()
-{
-	// Only the first "main" light casts a shadow.
-	//XMVECTOR lightPos = { 0.f,300.f,300.f,1.f };
-	//XMVECTOR targetPos = {0.f,0.f,0.f,1.f};
-	//XMVECTOR lightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	//constBuff.lightViewMatrix = XMMatrixLookAtLH(lightPos, targetPos, lightUp);
-
-	//constBuff.lightOthgraphicMatrix = XMMatrixOrthographicOffCenterLH(-1.f, 0.f, 0.5f, -0.5f, 1.f, 1000.f);
-
-	// Transform NDC space [-1,+1]^2 to texture space [0,1]^2
-	//XMMATRIX T(
-	//	0.5f, 0.0f, 0.0f, 0.0f,
-	//	0.0f, -0.5f, 0.0f, 0.0f,
-	//	0.0f, 0.0f, 1.0f, 0.0f,
-	//	0.5f, 0.5f, 0.0f, 1.0f);
-	//constBuff.lightTransformNDC = T;
-	//constBuff.shadowMatrix = constBuff.lightViewMatrix * constBuff.lightOthgraphicMatrix * constBuff.lightTransformNDC;
 }
 
 void wxGraphicD3D12::LoadDataFromOGEX(std::vector<std::string>& title)

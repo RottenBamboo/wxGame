@@ -12,7 +12,7 @@ struct PSOutput
 	float4 position : SV_POSITION;
 	float4 shadowPosition : POSITION0;
 	float4 positionH : POSITION1;
-	float3 PositionWorld : POSITION2;
+	float4 PositionWorld : POSITION2;
 	float2 uv : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangentU : TANGENT;
@@ -89,12 +89,10 @@ float4 PSMain(PSOutput input) : SV_TARGET
 	ambient = ambient * rgbaColor;
 	Material mat = { rgbaColor, objM.mfresnelR0, shininess };
 	Light light = { Strength, FalloffStart, Direction, FalloffEnd, Position, SpotPower };
-	//bumpedNormal = normalize(input.normal);
 	bumpedNormal = normalize(bumpedNormal);
 	float3 cameraPos1 = cameraPos;
 	float3 originPos = { 0.f, 0.f, 0.f };
 	float3 viewDirection = normalize(cameraPos - input.PositionWorld);
-	//float3 directLight = ComputeDirectionalLight(light, mat, input.normal, viewDirection);
 	float3 directLight = ComputeDirectionalLight(light, mat, bumpedNormal, viewDirection)*shadowFactor[0];
 	float4 litColor;
 	litColor.xyz = directLight + ambient; 
