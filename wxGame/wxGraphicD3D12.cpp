@@ -29,7 +29,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_cameraMoveBaseSpeed(0.5f),
 	m_cameraRotationSpeed(0.015f),
 	m_defaultCameraPosition({ 0.f,300.f,300.f,1.f }),
-	m_defaultLookAt({ 0,0,0.f,0.f, 1.0f}),
+	m_defaultLookAt({ 0.0f,0.f,0.f,1.0f}),
 	m_defaultUp({ 0.f,1.f,0.f,0.f }),
 	cameraDistance({ 0.f,0.f,0.f,1.f })
 {}
@@ -133,7 +133,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a render target view (RTV) descriptor heap.
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-		rtvHeapDesc.NumDescriptors = FrameCount;
+		rtvHeapDesc.NumDescriptors = FrameCount + NormalMapCount;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
@@ -232,7 +232,7 @@ void wxGraphicD3D12::LoadAssets()
 	CreateSunLightBuffer();
 	CreateConstantMatrix();
 	GenerateShadowMap();
-
+	GenerateNormalMap();
 	// Close the command list and execute it to begin the initial GPU setup.
 	ThrowIfFailed(m_commandList->Close());
 	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
@@ -352,6 +352,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ComPtr<ID3DBlob> pixelShader;
 		ComPtr<ID3DBlob> vertexShader1;
 		ComPtr<ID3DBlob> pixelShader1;
+		ComPtr<ID3DBlob> vertexShaderNormal;
+		ComPtr<ID3DBlob> pixelShaderNormal;
 
 #if defined(_DEBUG)
 		// Enable better shader debugging with the graphics debugging tools.
@@ -437,6 +439,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapRasterizer.ForcedSampleCount = 0;
 		smapRasterizer.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
+		//shadow map pipeline state object
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC smapPsoDesc = psoDesc;
 		smapPsoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
 		smapPsoDesc.pRootSignature = m_rootSignature.Get();
@@ -452,7 +455,24 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&smapPsoDesc, IID_PPV_ARGS(&m_shadowMapPipelineState)));
 
-		//debug shadow map
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\normals_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShaderNormal, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\normals_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShaderNormal, nullptr));
+
+		//drawing nromal pipeline state object
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC drawNormalPsoDesc = psoDesc;
+		drawNormalPsoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+		drawNormalPsoDesc.pRootSignature = m_rootSignature.Get();
+		drawNormalPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderNormal.Get());
+		drawNormalPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderNormal.Get());
+		drawNormalPsoDesc.SampleMask = UINT_MAX;
+		drawNormalPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		drawNormalPsoDesc.NumRenderTargets = 1;
+		drawNormalPsoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		drawNormalPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		drawNormalPsoDesc.RasterizerState = RasterizerDefault;
+		drawNormalPsoDesc.SampleDesc.Count = 1;
+		drawNormalPsoDesc.SampleDesc.Quality = 0;
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&drawNormalPsoDesc, IID_PPV_ARGS(&m_DrawNormalPipelineState)));
 
 }
 void wxGraphicD3D12::PopulateShadowMapCommandList()
@@ -465,9 +485,7 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	dsvHandle.ptr += m_DepthStencilDescriptorSize * SHADOW_MAP_DSV_COUNT;
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-	// Set null render target because we are only going to draw to
-   // depth buffer.  Setting a null render target will disable color writes.
-   // Note the active PSO also must specify a render target count of 0.
+
 	m_commandList->OMSetStencilRef(0);
 	m_commandList->OMSetRenderTargets(0, nullptr, false, &dsvHandle);
 	m_commandList->SetPipelineState(m_shadowMapPipelineState.Get());
@@ -493,19 +511,54 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
+void wxGame::wxGraphicD3D12::PopulateNormalCommandList()
+{
+	m_commandList->RSSetViewports(1, &m_viewport);
+	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+	// Change to RENDER_TARGET.
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_NormalMap.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvHandle.ptr += m_rtvDescriptorSize * FrameCount;
+
+
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	m_commandList->ClearDepthStencilView(m_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	const float clearColor[] = { 0.f, 0.f, 1.f, 0.f };
+	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
+
+	m_commandList->OMSetStencilRef(0);
+	m_commandList->SetPipelineState(m_DrawNormalPipelineState.Get());
+	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
+	{
+		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += i * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);	//texture
+		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_VertexBufferView[i]));
+		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
+		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
+		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
+		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
+		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
+		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
+	}
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_NormalMap.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
 void wxGraphicD3D12::PopulateCommandList()
 {
-	// Command list allocators can only be reset when the associated 
-	// command lists have finished execution on the GPU; apps should use 
-	// fences to determine GPU execution progress.
 	ThrowIfFailed(m_commandAllocator->Reset());
 
-	// However, when ExecuteCommandList() is called on a particular command 
-	// list, that command list can then be reset at any time and must be before 
-	// re-recording.
 	ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_defaultPipelineState.Get()));
 
-	// Set necessary state.
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
@@ -516,7 +569,7 @@ void wxGraphicD3D12::PopulateCommandList()
 	m_commandList->SetGraphicsRootDescriptorTable(3, srvConstantBuff);
 
 	PopulateShadowMapCommandList();
-
+	PopulateNormalCommandList();
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
@@ -545,12 +598,9 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
 		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
 		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
+		//srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		//srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
+		//m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
@@ -1029,6 +1079,56 @@ void wxGraphicD3D12::GenerateShadowMap()
 
 }
 
+void wxGame::wxGraphicD3D12::GenerateNormalMap()
+{
+	D3D12_RESOURCE_DESC texDesc;
+	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
+	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.Alignment = 0;
+	texDesc.Width = GetWidth();
+	texDesc.Height = GetHeight();
+	texDesc.DepthOrArraySize = 1;
+	texDesc.MipLevels = 1;
+	texDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.SampleDesc.Quality = 0;
+	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+	float normalClearColor[] = { 0.0f, 0.0f, 1.0f, 0.0f };
+	D3D12_CLEAR_VALUE optClear;
+	optClear.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	optClear.DepthStencil.Depth = 1.0f;
+	optClear.DepthStencil.Stencil = 0;
+
+
+	ThrowIfFailed(m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&texDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		&optClear,
+		IID_PPV_ARGS(&m_NormalMap)));
+
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = 1;
+	//m_device->CreateShaderResourceView(m_NormalMap.Get(), &srvDesc, mhNormalMapCpuSrv);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvHandle.ptr += m_rtvDescriptorSize * FrameCount;
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	rtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	rtvDesc.Texture2D.MipSlice = 0;
+	rtvDesc.Texture2D.PlaneSlice = 0;
+	m_device->CreateRenderTargetView(m_NormalMap.Get(), &rtvDesc, rtvHandle);
+}
 
 void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 {

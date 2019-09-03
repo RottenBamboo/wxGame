@@ -40,6 +40,7 @@ namespace wxGame {
 
 	private:
 		static const UINT FrameCount = 2;
+		static const UINT NormalMapCount = 1;
 		static const UINT TextureWidth = 256;
 		static const UINT TextureHeight = 256;
 		static const UINT TexturePixelSize = 4;	// The number of bytes used to represent a pixel in the texture.
@@ -120,9 +121,7 @@ namespace wxGame {
 		};
 
 		void* m_pCBDataBegin;			//constant buffer data pointer
-		void* m_pLightCBDataBegin;			//Light constant buffer data pointer
 		wxConstMatrix constBuff;
-		wxConstMatrix lightConstBuff;
 		void* m_pwxMatDataBegin;
 		wxLight m_sunLightBuff;
 		void* m_pSunLightDataBegin;
@@ -139,7 +138,6 @@ namespace wxGame {
 		ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 		ComPtr<ID3D12Resource> m_depthStencil;
 		ComPtr<ID3D12Resource> m_constantBuffer;
-		ComPtr<ID3D12Resource> m_lightConstantBuffer;
 		ComPtr<ID3D12Resource> m_sunLight;
 		ComPtr<ID3D12Resource> m_indexBuffer;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
@@ -150,6 +148,7 @@ namespace wxGame {
 		ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 		ComPtr<ID3D12PipelineState> m_defaultPipelineState;
 		ComPtr<ID3D12PipelineState> m_shadowMapPipelineState;
+		ComPtr<ID3D12PipelineState> m_DrawNormalPipelineState;
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		UINT m_rtvDescriptorSize;
 
@@ -161,13 +160,10 @@ namespace wxGame {
 		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_IndexBufferView;
 
 		std::vector<ID3D12Resource*> m_vec_texture;
-		ComPtr<ID3D12Resource> m_textureUploadHeap;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
 
-		ID3D12Resource* m_shadowMapSrv;
-		ID3D12Resource* m_shadowMapDsv;
 		ComPtr<ID3D12Resource> m_shadowMap;
-		std::vector<ID3D12Resource*>  m_vec_shadowMap;
+		ComPtr<ID3D12Resource> m_NormalMap;
 		std::vector<std::string> m_vec_AssetFileTitle;
 		std::vector<std::string> m_vec_TextureTitle;
 		unsigned int m_numIndices;
@@ -175,7 +171,6 @@ namespace wxGame {
 		std::vector<ComPtr<ID3D12Resource>> m_vec_matRes;
 		std::vector<wxMaterial> m_vec_matStut;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_objConstRes;
-		std::vector<ComPtr<ID3D12Resource>> m_vec_objConstResUploadHeap;
 		std::vector<wxObjConst> m_vec_objConstStut;
 		D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvSunLight;
 
@@ -209,12 +204,14 @@ namespace wxGame {
 		void CreateConstantMatrix();
 		void PopulateCommandList();
 		void PopulateShadowMapCommandList();
+		void PopulateNormalCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
 		void UpdateShadowMatrix(void);
 		void CheckControllerInput(void);
 		int	GetSceneGeometryNodeCount();
 		void GenerateShadowMap();
+		void GenerateNormalMap();
 		void UpdateSunLight(wxTimer *timer);
 
 		float m_cameraMoveBaseSpeed;// = 0.5f;

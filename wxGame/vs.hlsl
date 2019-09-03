@@ -51,7 +51,6 @@ PSOutput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal 
 	float4 posW = mul(objC.TransMatrix, float4(position.xyz, 1.0f));
 	result.positionH = mul(viewMatrix, posW.xyz);
 	result.shadowPosition = mul(lightTransformNDC, mul(lightOthgraphicMatrix,mul(lightViewMatrix1, result.PositionWorld)));
-	result.shadowPosition.w = 1.0f;
 
 	return result;
 }

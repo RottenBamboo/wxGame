@@ -136,5 +136,11 @@
     <FxCompile Include="shadow_map_v.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
+    <FxCompile Include="normals_ps.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="normals_vs.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
