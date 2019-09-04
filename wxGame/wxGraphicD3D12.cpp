@@ -140,7 +140,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
+		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//TransformMatrix(geometry count), light matrix, world related matrix.
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;																	
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -545,12 +545,14 @@ void wxGame::wxGraphicD3D12::PopulateNormalCommandList()
 		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_NormalMap.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void wxGame::wxGraphicD3D12::PopulateSSAOCommandList()
+{
 }
 
 void wxGraphicD3D12::PopulateCommandList()
@@ -598,9 +600,6 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
 		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
 		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
-		//srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		//srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
-		//m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
@@ -1110,6 +1109,8 @@ void wxGame::wxGraphicD3D12::GenerateNormalMap()
 		&optClear,
 		IID_PPV_ARGS(&m_NormalMap)));
 
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -1117,7 +1118,7 @@ void wxGame::wxGraphicD3D12::GenerateNormalMap()
 	srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.MipLevels = 1;
-	//m_device->CreateShaderResourceView(m_NormalMap.Get(), &srvDesc, mhNormalMapCpuSrv);
+	m_device->CreateShaderResourceView(m_NormalMap.Get(), &srvDesc, cbvHandle);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
 	rtvHandle.ptr += m_rtvDescriptorSize * FrameCount;

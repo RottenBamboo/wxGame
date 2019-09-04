@@ -205,6 +205,7 @@ namespace wxGame {
 		void PopulateCommandList();
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
+		void PopulateSSAOCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
 		void UpdateShadowMatrix(void);
