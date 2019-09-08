@@ -26,8 +26,7 @@ cbuffer cmatrix:register(b1)
 	matrix lightOthgraphicMatrix;
 	matrix lightViewMatrix1;
 	matrix lightTransformNDC;
-	matrix shadowMatrix;
-	float4x4 shadowTransformTest;
+	matrix invViewMatrix;
 	float4 cameraPos;
 	float4 viewPos;
 }

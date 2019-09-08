@@ -2,8 +2,10 @@
 #include "stdafx.h"
 #include "wxGraphicD3D12.h"
 #include "SceneManager.h"
+#include <DirectXPackedVector.h>
 #define ASSET_DIRECTORY	"../wxAsset/"
 
+using namespace DirectX::PackedVector;
 static std::vector<std::string> ResourceType = { MATCH_TEXTURE, MATCH_NORMALMAP };
 
 wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
@@ -133,14 +135,14 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a render target view (RTV) descriptor heap.
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-		rtvHeapDesc.NumDescriptors = FrameCount + NormalMapCount;
+		rtvHeapDesc.NumDescriptors = FrameCount + NormalMapCount + AmbientMapCount;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
+		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//TransformMatrix(geometry count), light matrix, world related matrix.
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;																	
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -233,6 +235,8 @@ void wxGraphicD3D12::LoadAssets()
 	CreateConstantMatrix();
 	GenerateShadowMap();
 	GenerateNormalMap();
+	GenerateAmbientMap();
+	GenerateRandomVectorTexture();
 	// Close the command list and execute it to begin the initial GPU setup.
 	ThrowIfFailed(m_commandList->Close());
 	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
@@ -273,21 +277,23 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 		}
 
-		CD3DX12_DESCRIPTOR_RANGE1 ranges[4];
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[5];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
 		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//normal texture, specified shaderRegister number
 		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 4, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//shadow map, specified shaderRegister number
+		ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 5, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//random vector map, specified shaderRegister number
 
-		CD3DX12_ROOT_PARAMETER1 rootParameters[6];
+		CD3DX12_ROOT_PARAMETER1 rootParameters[7];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
 		rootParameters[1].InitAsShaderResourceView(1, 0);//material resource view
 		rootParameters[2].InitAsShaderResourceView(2, 0);//transform matrix resource view
 		rootParameters[3].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
 		rootParameters[4].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);
 		rootParameters[5].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[6].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_ALL);
 
-		D3D12_STATIC_SAMPLER_DESC sampleDesc[3];
+		D3D12_STATIC_SAMPLER_DESC sampleDesc[7];
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
 		sampler.Filter = D3D12_FILTER_ANISOTROPIC;
 		sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
@@ -337,8 +343,72 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		sampleDesc[2] = shadowSampler;
 
+		D3D12_STATIC_SAMPLER_DESC depthMapSampler = {};
+		depthMapSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+		depthMapSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		depthMapSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		depthMapSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		depthMapSampler.MipLODBias = 0.f;
+		depthMapSampler.MaxAnisotropy = 16;
+		depthMapSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		depthMapSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+		depthMapSampler.MinLOD = 0.0f;
+		depthMapSampler.MaxLOD = D3D12_FLOAT32_MAX;
+		depthMapSampler.ShaderRegister = 3;
+		depthMapSampler.RegisterSpace = 0;
+		depthMapSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		sampleDesc[3] = depthMapSampler;
+
+		D3D12_STATIC_SAMPLER_DESC pointClampSampler = {};
+		pointClampSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+		pointClampSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		pointClampSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		pointClampSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		pointClampSampler.MipLODBias = 0.f;
+		pointClampSampler.MaxAnisotropy = 16;
+		pointClampSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		pointClampSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+		pointClampSampler.MinLOD = 0.0f;
+		pointClampSampler.MaxLOD = D3D12_FLOAT32_MAX;
+		pointClampSampler.ShaderRegister = 4;
+		pointClampSampler.RegisterSpace = 0;
+		pointClampSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		sampleDesc[4] = pointClampSampler;
+
+		D3D12_STATIC_SAMPLER_DESC linearClampSampler = {};
+		linearClampSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+		linearClampSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		linearClampSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		linearClampSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		linearClampSampler.MipLODBias = 0.f;
+		linearClampSampler.MaxAnisotropy = 16;
+		linearClampSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		linearClampSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+		linearClampSampler.MinLOD = 0.0f;
+		linearClampSampler.MaxLOD = D3D12_FLOAT32_MAX;
+		linearClampSampler.ShaderRegister = 5;
+		linearClampSampler.RegisterSpace = 0;
+		linearClampSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		sampleDesc[5] = linearClampSampler;
+
+		D3D12_STATIC_SAMPLER_DESC linearWrapSampler = {};
+		linearClampSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+		linearClampSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		linearClampSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		linearClampSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		linearClampSampler.MipLODBias = 0.f;
+		linearClampSampler.MaxAnisotropy = 16;
+		linearClampSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		linearClampSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+		linearClampSampler.MinLOD = 0.0f;
+		linearClampSampler.MaxLOD = D3D12_FLOAT32_MAX;
+		linearClampSampler.ShaderRegister = 6;
+		linearClampSampler.RegisterSpace = 0;
+		linearClampSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		sampleDesc[6] = linearClampSampler;
+
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 3, sampleDesc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 7, sampleDesc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
@@ -455,8 +525,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&smapPsoDesc, IID_PPV_ARGS(&m_shadowMapPipelineState)));
 
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\normals_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShaderNormal, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\normals_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShaderNormal, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\ssao_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShaderNormal, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\ssao_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShaderNormal, nullptr));
 
 		//drawing nromal pipeline state object
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC drawNormalPsoDesc = psoDesc;
@@ -474,6 +544,24 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		drawNormalPsoDesc.SampleDesc.Quality = 0;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&drawNormalPsoDesc, IID_PPV_ARGS(&m_DrawNormalPipelineState)));
 
+		//ssao pipeline state object
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC ssaoPsoDesc = psoDesc;
+		ssaoPsoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+		ssaoPsoDesc.pRootSignature = m_rootSignature.Get();
+		ssaoPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderNormal.Get());
+		ssaoPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderNormal.Get());
+		ssaoPsoDesc.SampleMask = UINT_MAX;
+		ssaoPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		ssaoPsoDesc.NumRenderTargets = 1;
+		ssaoPsoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		ssaoPsoDesc.DepthStencilState.DepthEnable = false;
+		ssaoPsoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		ssaoPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		ssaoPsoDesc.RasterizerState = RasterizerDefault;
+		ssaoPsoDesc.SampleDesc.Count = 1;
+		ssaoPsoDesc.SampleDesc.Quality = 0;
+		ssaoPsoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_SsaoPipelineState)));
 }
 void wxGraphicD3D12::PopulateShadowMapCommandList()
 {
@@ -553,6 +641,43 @@ void wxGame::wxGraphicD3D12::PopulateNormalCommandList()
 
 void wxGame::wxGraphicD3D12::PopulateSSAOCommandList()
 {
+	m_commandList->RSSetViewports(1, &m_viewport);
+	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount);
+
+	float clearColor[] = { 1.0f,1.0f,1.0f,1.0f };
+	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, nullptr);
+
+	m_commandList->OMSetStencilRef(0);
+	m_commandList->SetPipelineState(m_SsaoPipelineState.Get());
+	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
+	{
+		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += i * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);	//texture
+		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_VertexBufferView[i]));
+		m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
+		m_commandList->SetGraphicsRootShaderResourceView(1, m_vec_matRes[i]->GetGPUVirtualAddress());	//material
+		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_objConstRes[i]->GetGPUVirtualAddress());	//transform matrix
+		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + +SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount) * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//ssao normalmap
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
+		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount + AmbientMapCount) * m_TypedDescriptorSize;
+		m_commandList->SetGraphicsRootDescriptorTable(6, srvOffset);	//random vector map
+		m_commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+	}
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
 void wxGraphicD3D12::PopulateCommandList()
@@ -688,6 +813,8 @@ void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 	constBuff.lightOthgraphicMatrix = LightOthgraphicMatrix;
 	constBuff.lightViewMatrix = LightViewMatrix;
 	constBuff.lightTransformNDC = LightTransformNDC;
+	Matrix4X4FT Determ = MatrixDeterminant(constBuff.viewMatrix);
+	constBuff.invViewMatrix = MatrixInverse(Determ);
 }
 
 void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
@@ -1078,7 +1205,7 @@ void wxGraphicD3D12::GenerateShadowMap()
 
 }
 
-void wxGame::wxGraphicD3D12::GenerateNormalMap()
+void wxGraphicD3D12::GenerateNormalMap()
 {
 	D3D12_RESOURCE_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
@@ -1129,6 +1256,141 @@ void wxGame::wxGraphicD3D12::GenerateNormalMap()
 	rtvDesc.Texture2D.MipSlice = 0;
 	rtvDesc.Texture2D.PlaneSlice = 0;
 	m_device->CreateRenderTargetView(m_NormalMap.Get(), &rtvDesc, rtvHandle);
+}
+
+void wxGraphicD3D12::GenerateAmbientMap()
+{
+	D3D12_RESOURCE_DESC texDesc;
+	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
+	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.Alignment = 0;
+	texDesc.Width = GetWidth();
+	texDesc.Height = GetHeight();
+	texDesc.DepthOrArraySize = 1;
+	texDesc.MipLevels = 1;
+	texDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.SampleDesc.Quality = 0;
+	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+	float normalClearColor[] = { 0.0f, 0.0f, 1.0f, 0.0f };
+	D3D12_CLEAR_VALUE optClear;
+	optClear.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	optClear.DepthStencil.Depth = 1.0f;
+	optClear.DepthStencil.Stencil = 0;
+
+	ThrowIfFailed(m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&texDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		&optClear,
+		IID_PPV_ARGS(&m_AmbientMap)));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = 1;
+	m_device->CreateShaderResourceView(m_AmbientMap.Get(), &srvDesc, cbvHandle);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount);
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	rtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	rtvDesc.Texture2D.MipSlice = 0;
+	rtvDesc.Texture2D.PlaneSlice = 0;
+	m_device->CreateRenderTargetView(m_AmbientMap.Get(), &rtvDesc, rtvHandle);
+}
+
+void wxGraphicD3D12::GenerateRandomVectorTexture()
+{
+	D3D12_RESOURCE_DESC texDesc;
+	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
+	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.Alignment = 0;
+	texDesc.Width = 256;
+	texDesc.Height = 256;
+	texDesc.DepthOrArraySize = 1;
+	texDesc.MipLevels = 1;
+	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.SampleDesc.Quality = 0;
+	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	ThrowIfFailed(m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&texDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&m_RandomVectorMap)));
+
+	const UINT num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
+	const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_RandomVectorMap.Get(), 0, num2DSubresources);
+
+	ThrowIfFailed(m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_RandomVectorMapUploadBuffer.GetAddressOf())));
+
+	XMCOLOR initData[256 * 256];
+	for (int i = 0; i < 256; ++i)
+	{
+		for (int j = 0; j < 256; ++j)
+		{
+			// Random vector in [0,1].  We will decompress in shader to [-1,1].
+			XMFLOAT3 v((float)(rand()) / (float)RAND_MAX, (float)(rand()) / (float)RAND_MAX, (float)(rand()) / (float)RAND_MAX);
+
+			initData[i * 256 + j] = XMCOLOR(v.x, v.y, v.z, 0.0f);
+		}
+	}
+
+	//Vector4FT initData[256 * 256];
+	//for (int i = 0; i < 256; ++i)
+	//{
+		//for (int j = 0; j < 256; ++j)
+		//{
+	//		// Random vector in [0,1].  We will decompress in shader to [-1,1].
+	//		XMFLOAT3 v((float)(rand()) / (float)RAND_MAX, (float)(rand()) / (float)RAND_MAX, (float)(rand()) / (float)RAND_MAX);
+
+	//		initData[i * 256 + j] = Vector4FT{ v.x, v.y, v.z, 0.0f };
+		//}
+	//}
+
+	D3D12_SUBRESOURCE_DATA subResourceData = {};
+	subResourceData.pData = initData;
+	subResourceData.RowPitch = 256 * sizeof(XMCOLOR);
+	subResourceData.SlicePitch = subResourceData.RowPitch * 256;
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_RandomVectorMap.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
+	UpdateSubresources(m_commandList.Get(), m_RandomVectorMap.Get(), m_RandomVectorMapUploadBuffer.Get(),
+		0, 0, num2DSubresources, &subResourceData);
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_RandomVectorMap.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount + AmbientMapCount);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = 1;
+	m_device->CreateShaderResourceView(m_RandomVectorMap.Get(), &srvDesc, cbvHandle);
 }
 
 void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)

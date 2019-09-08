@@ -12,8 +12,10 @@
 #define SHADOW_MAP_DSV_COUNT (int)1
 #define CONSTANTMATRIX_COUNT (int)1
 #define SHADOW_CONSTANTMATRIX_COUNT (int)1
+#define RANDOM_VECTOR_MAP_COUNT (int)1
 #define GAMEPAD_LEFT_THUMB_DEADZONE 16354 
 #define GAMEPAD_RIGHT_THUMB_DEADZONE 16354
+#define CONST_256_SQURE 65536
 
 #define MATCH_OGEX "[\\S\\s]*\\.ogex$"
 #define SUFFIX_OGEX ".ogex"
@@ -41,6 +43,7 @@ namespace wxGame {
 	private:
 		static const UINT FrameCount = 2;
 		static const UINT NormalMapCount = 1;
+		static const UINT AmbientMapCount = 1;
 		static const UINT TextureWidth = 256;
 		static const UINT TextureHeight = 256;
 		static const UINT TexturePixelSize = 4;	// The number of bytes used to represent a pixel in the texture.
@@ -81,8 +84,7 @@ namespace wxGame {
 			Matrix4X4FT lightOthgraphicMatrix;
 			Matrix4X4FT lightViewMatrix;
 			Matrix4X4FT lightTransformNDC;
-			Matrix4X4FT shadowMatrix;
-			XMFLOAT4X4 shadowTranformTest;
+			Matrix4X4FT invViewMatrix;
 			Vector4FT cameraPos;
 			Vector4FT viewPos;
 
@@ -92,6 +94,7 @@ namespace wxGame {
 				MatrixIdentity(perspectiveMatrix);
 				MatrixIdentity(rotatMatrix);
 				MatrixIdentity(shadowTransform);
+				MatrixIdentity(invViewMatrix);
 				cameraPos = { 0.f,0.f,0.f,1.f };
 				viewPos = { 0.f,0.f,1.f };
 			}
@@ -149,6 +152,7 @@ namespace wxGame {
 		ComPtr<ID3D12PipelineState> m_defaultPipelineState;
 		ComPtr<ID3D12PipelineState> m_shadowMapPipelineState;
 		ComPtr<ID3D12PipelineState> m_DrawNormalPipelineState;
+		ComPtr<ID3D12PipelineState> m_SsaoPipelineState;
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		UINT m_rtvDescriptorSize;
 
@@ -164,6 +168,9 @@ namespace wxGame {
 
 		ComPtr<ID3D12Resource> m_shadowMap;
 		ComPtr<ID3D12Resource> m_NormalMap;
+		ComPtr<ID3D12Resource> m_AmbientMap;
+		ComPtr<ID3D12Resource> m_RandomVectorMap;
+		ComPtr<ID3D12Resource> m_RandomVectorMapUploadBuffer;
 		std::vector<std::string> m_vec_AssetFileTitle;
 		std::vector<std::string> m_vec_TextureTitle;
 		unsigned int m_numIndices;
@@ -213,6 +220,8 @@ namespace wxGame {
 		int	GetSceneGeometryNodeCount();
 		void GenerateShadowMap();
 		void GenerateNormalMap();
+		void GenerateAmbientMap();
+		void GenerateRandomVectorTexture();
 		void UpdateSunLight(wxTimer *timer);
 
 		float m_cameraMoveBaseSpeed;// = 0.5f;
