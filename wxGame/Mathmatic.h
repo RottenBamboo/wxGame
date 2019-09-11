@@ -704,4 +704,14 @@ namespace Mathmatic
 		};
 		return othographicMatrix;
 	}
+
+	static float GetRandFloat()
+	{
+		return (float)(rand()) / (float)RAND_MAX;
+	}
+
+	static float GetRandFloat(float a, float b)
+	{
+		return a + GetRandFloat()*(b - a);
+	}
 }

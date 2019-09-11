@@ -9,6 +9,7 @@
 #include "SceneManager.h"
 
 #define SUNLIGHT_COUNT (int)1
+#define SSAO_COUNT (int)1
 #define SHADOW_MAP_DSV_COUNT (int)1
 #define CONSTANTMATRIX_COUNT (int)1
 #define SHADOW_CONSTANTMATRIX_COUNT (int)1
@@ -123,6 +124,17 @@ namespace wxGame {
 			float SpotPower;                            // spot light only
 		};
 
+		struct wxSSAOConstant
+		{
+			Vector4FT offsetVectors[14];
+			float occlusionRadius = 0.5f;
+			float occlusionFadeStart = 0.2f;
+			float occlusionFadeEnd = 2.0f;
+			float surfaceEpsilon = 0.05f;
+		};
+
+		void* m_pCBSSAOBegin;
+		wxSSAOConstant m_constSSAOBuff;
 		void* m_pCBDataBegin;			//constant buffer data pointer
 		wxConstMatrix constBuff;
 		void* m_pwxMatDataBegin;
@@ -130,6 +142,7 @@ namespace wxGame {
 		void* m_pSunLightDataBegin;
 		wxObjConst m_objConst;
 		void* m_pObjConstDataBegin;
+		Vector4FT m_offsets[14];
 
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
@@ -142,6 +155,7 @@ namespace wxGame {
 		ComPtr<ID3D12Resource> m_depthStencil;
 		ComPtr<ID3D12Resource> m_constantBuffer;
 		ComPtr<ID3D12Resource> m_sunLight;
+		ComPtr<ID3D12Resource> m_ssaoBuffer;
 		ComPtr<ID3D12Resource> m_indexBuffer;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 		ComPtr<ID3D12CommandQueue> m_commandQueue;
@@ -209,6 +223,7 @@ namespace wxGame {
 		void CreateSunLightBuffer();
 		void CreateObjConst(std::vector<wxObjConst>&);
 		void CreateConstantMatrix();
+		void CreateSSAOBuffer();
 		void PopulateCommandList();
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
@@ -222,7 +237,9 @@ namespace wxGame {
 		void GenerateNormalMap();
 		void GenerateAmbientMap();
 		void GenerateRandomVectorTexture();
+		void BuildOffsetVectors();
 		void UpdateSunLight(wxTimer *timer);
+		void UpdateSSAO(wxTimer *timer);
 
 		float m_cameraMoveBaseSpeed;// = 0.5f;
 		float m_cameraRotationSpeed;// = 0.015f;
