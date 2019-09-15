@@ -72,7 +72,7 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
 
 	return bumpedNormalW;
 }
-float4 PSMain(PSOutput input) : SV_TARGET
+float4 PSMain(PSOutput input) : SV_Target
 { 
 	objMaterial objM = g_objMaterial[0]; 
 

@@ -18,7 +18,7 @@ cbuffer cmatrix:register(b1)
 	matrix lightOthgraphicMatrix;
 	matrix lightViewMatrix1;
 	matrix lightTransformNDC;
-	matrix invViewMatrix;
+	matrix invProjMatrix;
 	float4 cameraPos;
 	float4 viewPos;
 }
@@ -86,7 +86,7 @@ float OcclusionFunction(float distZ)
 	return occlusion;
 }
 
-float PSMain(PSOutput input) : SV_Target
+float4 PSMain(PSOutput input) : SV_Target
 {
 	float3 n = normalize(g_normalmap.SampleLevel(g_PointClampSampler, input.uv, 0.0f).xyz);
 	float pz = g_depthMap.SampleLevel(g_depthMapSampler, input.uv, 0.0f).r;
@@ -112,7 +112,7 @@ float PSMain(PSOutput input) : SV_Target
 	}
 	occlusionSum /= g_SampleCount;
 	float access = 1.0f - occlusionSum;
-	float result = saturate(pow(access, 6.0f));
-	float rrr = { 1.0f };
-	return rrr;
+	float4 result = saturate(pow(access, 6.0f));
+	result.a = 1.0f;
+	return result;
 }

@@ -27,6 +27,8 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
 	m_shadowmap_Viewport(0.0f, 0.0f, 4096, 4096),
 	m_shadowmap_ScissorRect(0, 0, 4096, 4096),
+	m_ssao_viewport(0.f,0.f, static_cast<float>((width) / 2), static_cast<float>((height) / 2)),
+	m_ssao_scissorRect(0,0, static_cast<float>((width) / 2), static_cast<float>((height) / 2)),
 	m_rtvDescriptorSize(0),
 	m_cameraMoveBaseSpeed(0.5f),
 	m_cameraRotationSpeed(0.015f),
@@ -231,14 +233,14 @@ void wxGraphicD3D12::LoadAssets()
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_depthStencil.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
-	BuildOffsetVectors();
 	CreateSunLightBuffer();
-	CreateConstantMatrix(); 
-	CreateSSAOBuffer();
+	CreateConstantMatrix();
 	GenerateShadowMap();
 	GenerateNormalMap();
 	GenerateAmbientMap();
 	GenerateRandomVectorTexture();
+	BuildOffsetVectors();
+	CreateSSAOBuffer();
 	// Close the command list and execute it to begin the initial GPU setup.
 	ThrowIfFailed(m_commandList->Close());
 	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
@@ -279,14 +281,15 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 		}
 
-		CD3DX12_DESCRIPTOR_RANGE1 ranges[5];
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[6];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
-		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SSAO_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//normal texture, specified shaderRegister number
 		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 4, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//shadow map, specified shaderRegister number
 		ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 5, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//random vector map, specified shaderRegister number
+		ranges[5].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SSAO_COUNT, 2, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //ssao constant
 
-		CD3DX12_ROOT_PARAMETER1 rootParameters[7];
+		CD3DX12_ROOT_PARAMETER1 rootParameters[8];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
 		rootParameters[1].InitAsShaderResourceView(1, 0);//material resource view
 		rootParameters[2].InitAsShaderResourceView(2, 0);//transform matrix resource view
@@ -294,6 +297,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		rootParameters[4].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);
 		rootParameters[5].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_ALL);
 		rootParameters[6].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[7].InitAsDescriptorTable(1, &ranges[5], D3D12_SHADER_VISIBILITY_ALL);
 
 		D3D12_STATIC_SAMPLER_DESC sampleDesc[7];
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
@@ -394,20 +398,20 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		sampleDesc[5] = linearClampSampler;
 
 		D3D12_STATIC_SAMPLER_DESC linearWrapSampler = {};
-		linearClampSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-		linearClampSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		linearClampSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		linearClampSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		linearClampSampler.MipLODBias = 0.f;
-		linearClampSampler.MaxAnisotropy = 16;
-		linearClampSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-		linearClampSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
-		linearClampSampler.MinLOD = 0.0f;
-		linearClampSampler.MaxLOD = D3D12_FLOAT32_MAX;
-		linearClampSampler.ShaderRegister = 6;
-		linearClampSampler.RegisterSpace = 0;
-		linearClampSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		sampleDesc[6] = linearClampSampler;
+		linearWrapSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+		linearWrapSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		linearWrapSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		linearWrapSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		linearWrapSampler.MipLODBias = 0.f;
+		linearWrapSampler.MaxAnisotropy = 16;
+		linearWrapSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		linearWrapSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+		linearWrapSampler.MinLOD = 0.0f;
+		linearWrapSampler.MaxLOD = D3D12_FLOAT32_MAX;
+		linearWrapSampler.ShaderRegister = 6;
+		linearWrapSampler.RegisterSpace = 0;
+		linearWrapSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		sampleDesc[6] = linearWrapSampler;
 
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
 		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 7, sampleDesc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -564,6 +568,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ssaoPsoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 		ssaoPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 		ssaoPsoDesc.RasterizerState = RasterizerDefault;
+		//ssaoPsoDesc.RasterizerState.FrontCounterClockwise = false;
 		ssaoPsoDesc.SampleDesc.Count = 1;
 		ssaoPsoDesc.SampleDesc.Quality = 0;
 		ssaoPsoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
@@ -647,8 +652,8 @@ void wxGame::wxGraphicD3D12::PopulateNormalCommandList()
 
 void wxGraphicD3D12::PopulateSSAOCommandList()
 {
-	m_commandList->RSSetViewports(1, &m_viewport);
-	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+	m_commandList->RSSetViewports(1, &m_ssao_viewport);
+	m_commandList->RSSetScissorRects(1, &m_ssao_scissorRect);
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
@@ -664,19 +669,23 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	m_commandList->SetPipelineState(m_SsaoPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		m_commandList->IASetVertexBuffers(0, 0, nullptr);
-		m_commandList->IASetIndexBuffer(nullptr);
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + +SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount) * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//ssao normalmap
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
-		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount + AmbientMapCount) * m_TypedDescriptorSize;
-		m_commandList->SetGraphicsRootDescriptorTable(6, srvOffset);	//random vector map
-		m_commandList->DrawInstanced(6, 1, 0, 0);
+	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
+	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
+
+	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	m_commandList->IASetVertexBuffers(0, 0, nullptr);
+	m_commandList->IASetIndexBuffer(nullptr);
+	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + +SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//ssao normalmap
+	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
+	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount + AmbientMapCount) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(6, srvOffset);	//random vector map
+	m_commandList->DrawInstanced(6, 1, 0, 0);
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
@@ -819,8 +828,7 @@ void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 	constBuff.lightOthgraphicMatrix = LightOthgraphicMatrix;
 	constBuff.lightViewMatrix = LightViewMatrix;
 	constBuff.lightTransformNDC = LightTransformNDC;
-	//float Determ = MatrixDeterminant(constBuff.viewMatrix);
-	constBuff.invViewMatrix = MatrixInverse(constBuff.viewMatrix);
+	constBuff.invProjMatrix = MatrixInverse(constBuff.perspectiveMatrix);
 }
 
 void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
@@ -1251,8 +1259,8 @@ void wxGraphicD3D12::GenerateNormalMap()
 	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
-	float normalClearColor[] = { 0.0f, 0.0f, 1.0f, 0.0f };
 	D3D12_CLEAR_VALUE optClear;
+	optClear.Color[0] = 0.0f; optClear.Color[1] = 0.0f; optClear.Color[2] = 1.0f; optClear.Color[3] = 0.0f;
 	optClear.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	optClear.DepthStencil.Depth = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
@@ -1306,6 +1314,7 @@ void wxGraphicD3D12::GenerateAmbientMap()
 
 	float normalClearColor[] = { 0.0f, 0.0f, 1.0f, 0.0f };
 	D3D12_CLEAR_VALUE optClear;
+	optClear.Color[0] = 0.0f; optClear.Color[1] = 0.0f; optClear.Color[2] = 1.0f; optClear.Color[3] = 0.0f;
 	optClear.Format = DXGI_FORMAT_R16_UNORM;
 
 	ThrowIfFailed(m_device->CreateCommittedResource(
@@ -1333,7 +1342,7 @@ void wxGraphicD3D12::GenerateAmbientMap()
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	rtvDesc.Format = DXGI_FORMAT_R16_UNORM;
-	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Texture2D.MipLevels = 0;
 	rtvDesc.Texture2D.PlaneSlice = 0;
 	m_device->CreateRenderTargetView(m_AmbientMap.Get(), &rtvDesc, rtvHandle);
 }
@@ -1744,7 +1753,7 @@ void wxGame::wxGraphicD3D12::CreateSSAOBuffer()
 	memcpy(m_pCBSSAOBegin, &m_constSSAOBuff, sizeof(wxSSAOConstant));
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
 	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_MAP_DSV_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT);
-
+	
 	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
 	constantBufferView.BufferLocation = m_ssaoBuffer->GetGPUVirtualAddress();
 	constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxSSAOConstant));

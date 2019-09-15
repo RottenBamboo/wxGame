@@ -85,7 +85,7 @@ namespace wxGame {
 			Matrix4X4FT lightOthgraphicMatrix;
 			Matrix4X4FT lightViewMatrix;
 			Matrix4X4FT lightTransformNDC;
-			Matrix4X4FT invViewMatrix;
+			Matrix4X4FT invProjMatrix;
 			Vector4FT cameraPos;
 			Vector4FT viewPos;
 
@@ -95,7 +95,7 @@ namespace wxGame {
 				MatrixIdentity(perspectiveMatrix);
 				MatrixIdentity(rotatMatrix);
 				MatrixIdentity(shadowTransform);
-				MatrixIdentity(invViewMatrix);
+				MatrixIdentity(invProjMatrix);
 				cameraPos = { 0.f,0.f,0.f,1.f };
 				viewPos = { 0.f,0.f,1.f };
 			}
@@ -147,6 +147,8 @@ namespace wxGame {
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
 		CD3DX12_RECT m_scissorRect;
+		CD3DX12_VIEWPORT m_ssao_viewport;
+		CD3DX12_RECT m_ssao_scissorRect;
 		CD3DX12_VIEWPORT m_shadowmap_Viewport;
 		CD3DX12_RECT m_shadowmap_ScissorRect;
 		ComPtr<IDXGISwapChain3> m_swapChain;ComPtr<ID3D12Resource> textureUploadHeap;

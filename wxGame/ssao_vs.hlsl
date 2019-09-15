@@ -7,7 +7,7 @@ cbuffer cmatrix:register(b1)
 	matrix lightOthgraphicMatrix;
 	matrix lightViewMatrix1;
 	matrix lightTransformNDC;
-	matrix invViewMatrix;
+	matrix invProjMatrix;
 	float4 cameraPos;
 	float4 viewPos;
 }
@@ -51,7 +51,7 @@ PSOutput VSMain(uint vid : SV_VertexID)
 	PSOutput result = (PSOutput)0.0f;
 	result.uv = g_texCoords[vid];
 	result.positionH = float4(2.0f*result.uv.x - 1.0f, 1.0f - 2.0f * result.uv.y, 0.0f, 1.0f);
-	float4 ph = mul(invViewMatrix, result.positionH);
+	float4 ph = mul(invProjMatrix, result.positionH);
 	result.position.xyz = ph.xyz / ph.w;
 	result.position.w = 1.f;
 	return result;
