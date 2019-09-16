@@ -1342,7 +1342,7 @@ void wxGraphicD3D12::GenerateAmbientMap()
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	rtvDesc.Format = DXGI_FORMAT_R16_UNORM;
-	srvDesc.Texture2D.MipLevels = 0;
+	rtvDesc.Texture2D.MipSlice = 0;
 	rtvDesc.Texture2D.PlaneSlice = 0;
 	m_device->CreateRenderTargetView(m_AmbientMap.Get(), &rtvDesc, rtvHandle);
 }
