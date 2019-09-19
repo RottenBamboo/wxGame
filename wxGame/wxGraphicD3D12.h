@@ -10,7 +10,9 @@
 
 #define SUNLIGHT_COUNT (int)1
 #define SSAO_COUNT (int)1
-#define SHADOW_MAP_DSV_COUNT (int)1
+#define DEFAULT_DSV_MAP_COUNT (int)1
+#define SHADOW_DSV_MAP_COUNT (int)1
+#define CAMERA_DSV_MAP_COUNT (int)1
 #define CONSTANTMATRIX_COUNT (int)1
 #define SHADOW_CONSTANTMATRIX_COUNT (int)1
 #define RANDOM_VECTOR_MAP_COUNT (int)1
@@ -127,10 +129,11 @@ namespace wxGame {
 		struct wxSSAOConstant
 		{
 			Vector4FT offsetVectors[14];
-			float occlusionRadius = 0.5f;
-			float occlusionFadeStart = 0.2f;
-			float occlusionFadeEnd = 2.0f;
-			float surfaceEpsilon = 0.05f;
+			float occlusionRadius;
+			float occlusionFadeStart;
+			float occlusionFadeEnd;
+			float surfaceEpsilon;
+			Vector2FT ScreenSize;
 		};
 
 		void* m_pCBSSAOBegin;
@@ -182,8 +185,9 @@ namespace wxGame {
 		std::vector<ID3D12Resource*> m_vec_texture;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
 
-		ComPtr<ID3D12Resource> m_shadowMap;
+		ComPtr<ID3D12Resource> m_shadowDepthMap;
 		ComPtr<ID3D12Resource> m_NormalMap;
+		ComPtr<ID3D12Resource> m_cameraDepthMap;
 		ComPtr<ID3D12Resource> m_AmbientMap;
 		ComPtr<ID3D12Resource> m_RandomVectorMap;
 		ComPtr<ID3D12Resource> m_RandomVectorMapUploadBuffer;
@@ -236,6 +240,7 @@ namespace wxGame {
 		void CheckControllerInput(void);
 		int	GetSceneGeometryNodeCount();
 		void GenerateShadowMap();
+		void GenerateCameraDepthMap();
 		void GenerateNormalMap();
 		void GenerateAmbientMap();
 		void GenerateRandomVectorTexture();

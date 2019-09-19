@@ -31,6 +31,8 @@ cbuffer ssaoMatrix:register(b2)
 	float g_occlusionFadeStart;
 	float g_occlusionFadeEnd;
 	float g_surfaceEpsilon;
+	float DimensionWidth;
+	float DimensionHeight;
 }
 
 Texture2D g_texture : register(t0);
@@ -46,7 +48,7 @@ static const int g_SampleCount = 14;
 float NdcDepthToViewDepth(float z_ndc)
 {
 	// z_ndc = A + B/viewZ, where gProj[2,2]=A and gProj[3,2]=B.
-	float viewZ = viewMatrix[3][2] / (z_ndc - viewMatrix[2][2]);
+	float viewZ = perspectiveMatrix[3][2] / (z_ndc - perspectiveMatrix[2][2]);
 	return viewZ;
 }
 
@@ -91,7 +93,7 @@ float4 PSMain(PSOutput input) : SV_Target
 	float3 n = normalize(g_normalmap.SampleLevel(g_PointClampSampler, input.uv, 0.0f).xyz);
 	float pz = g_depthMap.SampleLevel(g_depthMapSampler, input.uv, 0.0f).r;
 	pz = NdcDepthToViewDepth(pz);
-	float3 p = (pz / input.position.z)*input.position;
+	float3 p = (pz / input.positionH.z)*input.positionH;
 	float3 randomVector = 2.f * g_randomVecorMap.SampleLevel(g_linearWrapSampler, 4.f * input.uv, 0.f).rgb - 1.0f;
 	float occlusionSum = 0.0f;
 
@@ -100,7 +102,7 @@ float4 PSMain(PSOutput input) : SV_Target
 		float3 offset = reflect(g_offsetVectors[i].xyz, randomVector);
 		float flip = sign(dot(offset, n));
 		float3 q = p + flip * g_occlusionRadius * offset;
-		float4 projQ = mul(lightTransformNDC, mul(perspectiveMatrix, float4(q, 1.0f)));
+		float4 projQ = mul(perspectiveMatrix, mul(viewMatrix, float4(q, 1.0f)));
 		projQ /= projQ.w;
 		float rz = g_depthMap.SampleLevel(g_depthMapSampler, projQ.xy, 0.0f).r;
 		rz = NdcDepthToViewDepth(rz);
@@ -112,7 +114,5 @@ float4 PSMain(PSOutput input) : SV_Target
 	}
 	occlusionSum /= g_SampleCount;
 	float access = 1.0f - occlusionSum;
-	float4 result = saturate(pow(access, 6.0f));
-	result.a = 1.0f;
-	return result;
+	return saturate(pow(access, 6.0f));
 }

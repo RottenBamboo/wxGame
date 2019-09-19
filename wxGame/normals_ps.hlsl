@@ -44,7 +44,8 @@ cbuffer csunLight : register(b0)
 
 
 Texture2D g_texture : register(t0);
-Texture2D g_shadowMap : register(t4);
+Texture2D g_depthMap : register(t4);
+Texture2D g_normalMap : register(t3);
 SamplerState g_sampler : register(s0);
 SamplerState g_samAnisotropicWrap  : register(s1);
 
@@ -52,6 +53,6 @@ float4 PSMain(PSOutput input) : SV_Target
 {
 	//float4 rgbaColor = g_texture.Sample(g_samAnisotropicWrap, input.uv);
 	input.normal = normalize(input.normal);
-	float3 normalV = mul(input.normal, (float3x3)viewMatrix);
-	return float4(input.normal, 0.0f);
+	float3 normalV = mul((float3x3)viewMatrix, input.normal);
+	return float4(normalV, 0.0f);
 }
