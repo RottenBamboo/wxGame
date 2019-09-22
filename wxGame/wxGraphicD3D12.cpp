@@ -634,8 +634,8 @@ void wxGame::wxGraphicD3D12::PopulateNormalCommandList()
 	m_commandList->SetPipelineState(m_DrawNormalPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_COUNT) * m_TypedDescriptorSize;
-	m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//depth map
+	//srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_COUNT) * m_TypedDescriptorSize;
+	//m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//depth map
 	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
 	{
 		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
@@ -685,8 +685,8 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + +SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//ssao normalmap
 	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT) * m_TypedDescriptorSize;
-	m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//shadowmap
+	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_COUNT) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//depth map
 	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(6, srvOffset);	//random vector map
@@ -710,9 +710,9 @@ void wxGraphicD3D12::PopulateCommandList()
 	srvConstantBuff.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END);
 	m_commandList->SetGraphicsRootDescriptorTable(3, srvConstantBuff);
 
-	PopulateShadowMapCommandList();
-	PopulateNormalCommandList(); 
+	PopulateNormalCommandList();
 	PopulateSSAOCommandList();
+	PopulateShadowMapCommandList();
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 

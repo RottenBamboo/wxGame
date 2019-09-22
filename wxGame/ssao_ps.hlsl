@@ -48,7 +48,7 @@ static const int g_SampleCount = 14;
 float NdcDepthToViewDepth(float z_ndc)
 {
 	// z_ndc = A + B/viewZ, where gProj[2,2]=A and gProj[3,2]=B.
-	float viewZ = perspectiveMatrix[3][2] / (z_ndc - perspectiveMatrix[2][2]);
+	float viewZ = perspectiveMatrix[2][3] / (z_ndc - perspectiveMatrix[2][2]);//hlsl中举证是列主序，需要c++传递转置矩阵，现在暂使用行主序对应的下表位置
 	return viewZ;
 }
 
