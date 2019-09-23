@@ -13,6 +13,7 @@ struct PSOutput
 	float4 shadowPosition : POSITION0;
 	float4 positionH : POSITION1;
 	float4 PositionWorld : POSITION2;
+	float4 ssaoPosH : POSITION3;
 	float2 uv : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangentU : TANGENT;
@@ -53,7 +54,9 @@ cbuffer csunLight : register(b0)
 
 Texture2D g_texture : register(t0);
 Texture2D g_normalmap : register(t3);
+Texture2D g_ambientmap : register(t6);
 SamplerState g_sampler : register(s0);
+SamplerState g_linearClampSampler : register(s5);
 
 float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, float3 tangentW)
 {
@@ -84,8 +87,11 @@ float4 PSMain(PSOutput input) : SV_Target
 	float4 rgbaColor = g_texture.Sample(g_samAnisotropicWrap, input.uv);
 	float4 NormalMap = g_normalmap.Sample(g_samAnisotropicWrap, input.uv);
 	float3 bumpedNormal = NormalSampleToWorldSpace(NormalMap.rgb, input.normal, input.tangentU);
-	float4 ambient = { 0.15f, 0.15f, 0.15f, 1.f };
-	ambient = ambient * rgbaColor;
+	input.ssaoPosH /= input.ssaoPosH.w;
+	float ambientFactor = g_ambientmap.Sample(g_linearClampSampler, input.ssaoPosH.xy, 0.0f).r;
+	//float4 ambient = { 0.15f, 0.15f, 0.15f, 1.f };
+	float4 ambient = ambientFactor * rgbaColor;
+	//ambient = ambient * ambientFactor;// *ambientFactor;
 	Material mat = { rgbaColor, objM.mfresnelR0, shininess };
 	Light light = { Strength, FalloffStart, Direction, FalloffEnd, Position, SpotPower };
 	bumpedNormal = normalize(bumpedNormal);

@@ -9,7 +9,7 @@
 #include "SceneManager.h"
 
 #define SUNLIGHT_COUNT (int)1
-#define SSAO_COUNT (int)1
+#define SSAO_CONSTANT_COUNT (int)1
 #define DEFAULT_DSV_MAP_COUNT (int)1
 #define SHADOW_DSV_MAP_COUNT (int)1
 #define CAMERA_DSV_MAP_COUNT (int)1

@@ -26,6 +26,7 @@ struct PSOutput
 	float4 shadowPosition : POSITION0;
 	float4 positionH : POSITION1;
 	float4 PositionWorld : POSITION2;
+	float4 ssaoPosH : POSITION3;
 	float2 uv : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangentU : TANGENT;
@@ -48,6 +49,10 @@ PSOutput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal 
 	result.normal = mul(objC.TransMatrix, normal);
 	result.tangentU = mul(objC.TransMatrix, tangentU);
 	float4 posW = mul(objC.TransMatrix, float4(position.xyz, 1.0f));
+	float4 posProj = mul(perspectiveMatrix, mul(viewMatrix, posW));	// transform coordinates from view space to texture space
+	posProj.x = posProj.x * 0.5f + posProj.w * 0.5f;
+	posProj.y = posProj.y * -0.5f + posProj.w * 0.5f;
+	result.ssaoPosH = posProj;
 	result.positionH = mul(viewMatrix, posW.xyz);
 	result.shadowPosition = mul(lightTransformNDC, mul(lightOthgraphicMatrix,mul(lightViewMatrix1, result.PositionWorld)));
 
