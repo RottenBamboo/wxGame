@@ -102,7 +102,9 @@ float4 PSMain(PSOutput input) : SV_Target
 		float3 offset = reflect(g_offsetVectors[i].xyz, randomVector);
 		float flip = sign(dot(offset, n));
 		float3 q = p + flip * g_occlusionRadius * offset;
-		float4 projQ = mul(perspectiveMatrix, mul(viewMatrix, float4(q, 1.0f)));
+		float4 projQ = mul(perspectiveMatrix, float4(q, 1.0f));	// transform coordinates from view space to texture space
+		projQ.x = projQ.x * 0.5f + 0.5f;
+		projQ.y = projQ.y * -0.5f + 0.5f;
 		projQ /= projQ.w;
 		float rz = g_depthMap.SampleLevel(g_depthMapSampler, projQ.xy, 0.0f).r;
 		rz = NdcDepthToViewDepth(rz);
