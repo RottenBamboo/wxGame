@@ -90,8 +90,8 @@ float4 PSMain(PSOutput input) : SV_Target
 	input.ssaoPosH /= input.ssaoPosH.w;
 	float ambientFactor = g_ambientmap.Sample(g_linearClampSampler, input.ssaoPosH.xy, 0.0f).r;
 	//float4 ambient = { 0.15f, 0.15f, 0.15f, 1.f };
-	float4 ambient = ambientFactor * rgbaColor;
-	//ambient = ambient * ambientFactor;// *ambientFactor;
+	//ambient = ambient * rgbaColor;
+	float4 ambient = ambientFactor * rgbaColor * 0.35f;
 	Material mat = { rgbaColor, objM.mfresnelR0, shininess };
 	Light light = { Strength, FalloffStart, Direction, FalloffEnd, Position, SpotPower };
 	bumpedNormal = normalize(bumpedNormal);

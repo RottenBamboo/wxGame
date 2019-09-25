@@ -455,8 +455,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		};
 		D3D12_RASTERIZER_DESC RasterizerDefault;
 		RasterizerDefault.FillMode = D3D12_FILL_MODE_SOLID;
-		RasterizerDefault.CullMode = D3D12_CULL_MODE_NONE;	//this specified the not drawing face of the object
-		RasterizerDefault.FrontCounterClockwise = true;
+		RasterizerDefault.CullMode = D3D12_CULL_MODE_BACK;	//this specified the not drawing face of the object
+		RasterizerDefault.FrontCounterClockwise = FALSE;
 		RasterizerDefault.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 		RasterizerDefault.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 		RasterizerDefault.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
@@ -494,7 +494,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		psoDesc.RasterizerState = RasterizerDefault;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		//psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 		psoDesc.SampleMask = UINT_MAX;
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		psoDesc.NumRenderTargets = 1;
@@ -509,8 +509,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 
 		D3D12_RASTERIZER_DESC smapRasterizer;
 		smapRasterizer.FillMode = D3D12_FILL_MODE_SOLID;
-		smapRasterizer.CullMode = D3D12_CULL_MODE_NONE;	//this specified the not drawing face of the object
-		smapRasterizer.FrontCounterClockwise = true;
+		smapRasterizer.CullMode = D3D12_CULL_MODE_BACK;	//this specified the not drawing face of the object
+		smapRasterizer.FrontCounterClockwise = FALSE;
 		smapRasterizer.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 		smapRasterizer.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 		smapRasterizer.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
@@ -549,10 +549,10 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		drawNormalPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		drawNormalPsoDesc.NumRenderTargets = 1;
 		drawNormalPsoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-		drawNormalPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		drawNormalPsoDesc.RasterizerState = RasterizerDefault;
+		drawNormalPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 		drawNormalPsoDesc.SampleDesc.Count = 1;
 		drawNormalPsoDesc.SampleDesc.Quality = 0;
+		drawNormalPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;	//this specified the not drawing face of the object
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&drawNormalPsoDesc, IID_PPV_ARGS(&m_DrawNormalPipelineState)));
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\ssao_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexSSAOShader, nullptr));
@@ -571,6 +571,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ssaoPsoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 		ssaoPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 		ssaoPsoDesc.RasterizerState = RasterizerDefault;
+		ssaoPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;//ssao doesn't need CullMode
 		//ssaoPsoDesc.RasterizerState.FrontCounterClockwise = false;
 		ssaoPsoDesc.SampleDesc.Count = 1;
 		ssaoPsoDesc.SampleDesc.Quality = 0;
@@ -625,11 +626,11 @@ void wxGame::wxGraphicD3D12::PopulateNormalCommandList()
 	rtvHandle.ptr += m_rtvDescriptorSize * FrameCount;
 
 
+	const float clearColor[] = { 0.f, 0.f, 1.f, 0.f };
+	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	dsvHandle.ptr += m_DepthStencilDescriptorSize * (DEFAULT_DSV_MAP_COUNT + SHADOW_DSV_MAP_COUNT);
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-	const float clearColor[] = { 0.f, 0.f, 1.f, 0.f };
-	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
 
 	m_commandList->OMSetStencilRef(0);
@@ -684,7 +685,7 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	m_commandList->IASetVertexBuffers(0, 0, nullptr);
 	m_commandList->IASetIndexBuffer(nullptr);
 	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + +SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount) * m_TypedDescriptorSize;
+	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + +SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//ssao normalmap
 	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT) * m_TypedDescriptorSize;
@@ -882,10 +883,10 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	m_constSSAOBuff.offsetVectors[12] = m_offsets[12];
 	m_constSSAOBuff.offsetVectors[13] = m_offsets[13];
 
-	m_constSSAOBuff.occlusionRadius = 0.5f;
-	m_constSSAOBuff.occlusionFadeStart = 0.2f;
-	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
-	m_constSSAOBuff.surfaceEpsilon = 0.05f;
+	m_constSSAOBuff.occlusionRadius = 2.f;
+	m_constSSAOBuff.occlusionFadeStart = 0.8f;
+	m_constSSAOBuff.occlusionFadeEnd = 4.f;
+	m_constSSAOBuff.surfaceEpsilon = 0.2f;
 	m_constSSAOBuff.ScreenSize.element[0] = GetWidth();
 	m_constSSAOBuff.ScreenSize.element[1] = GetHeight();
 	memcpy(m_pCBSSAOBegin, &m_constSSAOBuff, sizeof(wxSSAOConstant));
