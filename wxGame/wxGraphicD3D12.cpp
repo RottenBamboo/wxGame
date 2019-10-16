@@ -698,6 +698,34 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
+void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList()
+{
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap2.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount + 1);	//blurAmbiemtMap
+
+	float clearColor[] = { 1.0f,1.0f,1.0f,1.0f };
+	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, nullptr);
+
+	m_commandList->OMSetStencilRef(0);
+	m_commandList->SetPipelineState(m_SsaoPipelineState.Get());
+	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	D3D12_GPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount);
+	m_commandList->SetGraphicsRootDescriptorTable(0, cbvHandle);	//AmbientMap
+
+	m_commandList->IASetVertexBuffers(0, 0, nullptr);
+	m_commandList->IASetIndexBuffer(nullptr);
+
+	m_commandList->DrawInstanced(6, 1, 0, 0);
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap2.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
 void wxGraphicD3D12::PopulateCommandList()
 {
 	ThrowIfFailed(m_commandAllocator->Reset());
@@ -889,7 +917,48 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	m_constSSAOBuff.surfaceEpsilon = 0.2f;
 	m_constSSAOBuff.ScreenSize.element[0] = GetWidth();
 	m_constSSAOBuff.ScreenSize.element[1] = GetHeight();
+
+	UpdateBlurWidget();
+
 	memcpy(m_pCBSSAOBegin, &m_constSSAOBuff, sizeof(wxSSAOConstant));
+}
+
+void wxGame::wxGraphicD3D12::UpdateBlurWidget()
+{
+	std::vector<Vector4FT> BlurWidget = CalcGaussWeights(2.5f);
+	for (int i = 0; i != 3; i++)
+	{
+		m_constSSAOBuff.BlurWeights[0] = BlurWidget[0];
+		m_constSSAOBuff.BlurWeights[1] = BlurWidget[2];
+		m_constSSAOBuff.BlurWeights[2] = BlurWidget[3];
+	}
+}
+
+std::vector<Vector4FT> wxGame::wxGraphicD3D12::CalcGaussWeights(float sigma)
+{
+	float twoSigmaSquare = 2.0f * pow(sigma, 2);
+	int blurRadius = (int)ceil(2.0f * sigma);
+
+	std::vector<float> weights;
+	std::vector<Vector4FT> returnWeights;
+	weights.resize(2 * blurRadius + 1);
+	float weightSum = 0.0f;
+	for (INT i = -blurRadius; i <= blurRadius; i++)
+	{
+		float x = (float)i;
+		float base = E;
+		weights[i + blurRadius] = pow(base, -x * x / twoSigmaSquare);
+		weightSum += weights[i + blurRadius];
+	}
+	for (int i = 0; i < weights.size() / 4; i++)
+	{
+		
+		returnWeights[i / 4].element[0] = weights[i] /= weightSum;
+		returnWeights[i / 4].element[1] = weights[i + 1] /= weightSum;
+		returnWeights[i / 4].element[2] = weights[i + 2] /= weightSum;
+		returnWeights[i / 4].element[3] = weights[i + 3] /= weightSum;
+	}
+	return returnWeights;
 }
 
 void wxGraphicD3D12::LoadDataFromOGEX(std::vector<std::string>& title)

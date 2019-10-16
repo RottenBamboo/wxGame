@@ -19,7 +19,7 @@
 #define GAMEPAD_LEFT_THUMB_DEADZONE 16354 
 #define GAMEPAD_RIGHT_THUMB_DEADZONE 16354
 #define CONST_256_SQURE 65536
-
+#define E 2.718281828
 #define MATCH_OGEX "[\\S\\s]*\\.ogex$"
 #define SUFFIX_OGEX ".ogex"
 #define MATCH_TEXTURE "_texture_[0-9]*\\.bmp$"
@@ -234,6 +234,7 @@ namespace wxGame {
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
 		void PopulateSSAOCommandList();
+		void PopulateBlurSSAOCommandList();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
 		void UpdateShadowMatrix(void);
@@ -247,6 +248,8 @@ namespace wxGame {
 		void BuildOffsetVectors();
 		void UpdateSunLight(wxTimer *timer);
 		void UpdateSSAO(wxTimer *timer);
+		void UpdateBlurWidget();
+		std::vector<Vector4FT> CalcGaussWeights(float sigma);
 
 		float m_cameraMoveBaseSpeed;// = 0.5f;
 		float m_cameraRotationSpeed;// = 0.015f;
