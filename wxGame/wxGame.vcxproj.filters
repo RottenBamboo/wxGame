@@ -148,5 +148,11 @@
     <FxCompile Include="ssao_ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
+    <FxCompile Include="blurssao_vs.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="blurssao_ps.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

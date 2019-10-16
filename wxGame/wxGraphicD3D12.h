@@ -46,7 +46,7 @@ namespace wxGame {
 	private:
 		static const UINT FrameCount = 2;
 		static const UINT NormalMapCount = 1;
-		static const UINT AmbientMapCount = 1;
+		static const UINT AmbientMapCount = 2;
 		static const UINT TextureWidth = 256;
 		static const UINT TextureHeight = 256;
 		static const UINT TexturePixelSize = 4;	// The number of bytes used to represent a pixel in the texture.
@@ -134,6 +134,8 @@ namespace wxGame {
 			float occlusionFadeEnd;
 			float surfaceEpsilon;
 			Vector2FT ScreenSize;
+			float horzBlur;
+			Vector4FT blurWeights[3];
 		};
 
 		void* m_pCBSSAOBegin;
@@ -172,6 +174,7 @@ namespace wxGame {
 		ComPtr<ID3D12PipelineState> m_shadowMapPipelineState;
 		ComPtr<ID3D12PipelineState> m_DrawNormalPipelineState;
 		ComPtr<ID3D12PipelineState> m_SsaoPipelineState;
+		ComPtr<ID3D12PipelineState> m_BlurSsaoPipelineState;
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		UINT m_rtvDescriptorSize;
 
@@ -188,7 +191,8 @@ namespace wxGame {
 		ComPtr<ID3D12Resource> m_shadowDepthMap;
 		ComPtr<ID3D12Resource> m_NormalMap;
 		ComPtr<ID3D12Resource> m_cameraDepthMap;
-		ComPtr<ID3D12Resource> m_AmbientMap;
+		ComPtr<ID3D12Resource> m_AmbientMap1;
+		ComPtr<ID3D12Resource> m_AmbientMap2;
 		ComPtr<ID3D12Resource> m_RandomVectorMap;
 		ComPtr<ID3D12Resource> m_RandomVectorMapUploadBuffer;
 		std::vector<std::string> m_vec_AssetFileTitle;

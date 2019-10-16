@@ -435,6 +435,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ComPtr<ID3DBlob> pixelShaderNormal;
 		ComPtr<ID3DBlob> vertexSSAOShader;
 		ComPtr<ID3DBlob> pixelSSAOShader;
+		ComPtr<ID3DBlob> vertexBlurSSAOShader;
+		ComPtr<ID3DBlob> pixelBlurSSAOShader;
 
 #if defined(_DEBUG)
 		// Enable better shader debugging with the graphics debugging tools.
@@ -577,6 +579,12 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ssaoPsoDesc.SampleDesc.Quality = 0;
 		ssaoPsoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_SsaoPipelineState)));
+
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blurssao_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexBlurSSAOShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blurssao_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelBlurSSAOShader, nullptr));
+		ssaoPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexBlurSSAOShader.Get());
+		ssaoPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelBlurSSAOShader.Get());
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_BlurSsaoPipelineState)));
 }
 void wxGraphicD3D12::PopulateShadowMapCommandList()
 {
@@ -663,7 +671,7 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	m_commandList->RSSetViewports(1, &m_ssao_viewport);
 	m_commandList->RSSetScissorRects(1, &m_ssao_scissorRect);
 
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap.Get(),
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap1.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -694,7 +702,7 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(6, srvOffset);	//random vector map
 	m_commandList->DrawInstanced(6, 1, 0, 0);
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap.Get(),
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap1.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
@@ -711,7 +719,7 @@ void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList()
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, nullptr);
 
 	m_commandList->OMSetStencilRef(0);
-	m_commandList->SetPipelineState(m_SsaoPipelineState.Get());
+	m_commandList->SetPipelineState(m_BlurSsaoPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
@@ -742,7 +750,13 @@ void wxGraphicD3D12::PopulateCommandList()
 	m_commandList->SetGraphicsRootDescriptorTable(3, srvConstantBuff);
 
 	PopulateNormalCommandList();
-	PopulateSSAOCommandList();
+	PopulateSSAOCommandList(); 
+	m_constSSAOBuff.horzBlur = 1.f; 
+	UpdateSSAO(GetTimer());
+	PopulateBlurSSAOCommandList();
+	m_constSSAOBuff.horzBlur = 0.f;
+	UpdateSSAO(GetTimer());
+	PopulateBlurSSAOCommandList();
 	PopulateShadowMapCommandList();
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
@@ -928,9 +942,9 @@ void wxGame::wxGraphicD3D12::UpdateBlurWidget()
 	std::vector<Vector4FT> BlurWidget = CalcGaussWeights(2.5f);
 	for (int i = 0; i != 3; i++)
 	{
-		m_constSSAOBuff.BlurWeights[0] = BlurWidget[0];
-		m_constSSAOBuff.BlurWeights[1] = BlurWidget[2];
-		m_constSSAOBuff.BlurWeights[2] = BlurWidget[3];
+		m_constSSAOBuff.blurWeights[0] = BlurWidget[0];
+		m_constSSAOBuff.blurWeights[1] = BlurWidget[1];
+		m_constSSAOBuff.blurWeights[2] = BlurWidget[2];
 	}
 }
 
@@ -941,6 +955,7 @@ std::vector<Vector4FT> wxGame::wxGraphicD3D12::CalcGaussWeights(float sigma)
 
 	std::vector<float> weights;
 	std::vector<Vector4FT> returnWeights;
+	Vector4FT vec4ftWeights;
 	weights.resize(2 * blurRadius + 1);
 	float weightSum = 0.0f;
 	for (INT i = -blurRadius; i <= blurRadius; i++)
@@ -950,13 +965,17 @@ std::vector<Vector4FT> wxGame::wxGraphicD3D12::CalcGaussWeights(float sigma)
 		weights[i + blurRadius] = pow(base, -x * x / twoSigmaSquare);
 		weightSum += weights[i + blurRadius];
 	}
-	for (int i = 0; i < weights.size() / 4; i++)
+	for (int i = 0; i < weights.size();)
 	{
-		
-		returnWeights[i / 4].element[0] = weights[i] /= weightSum;
-		returnWeights[i / 4].element[1] = weights[i + 1] /= weightSum;
-		returnWeights[i / 4].element[2] = weights[i + 2] /= weightSum;
-		returnWeights[i / 4].element[3] = weights[i + 3] /= weightSum;
+		weights[i] /= weightSum;
+		vec4ftWeights.element[i % 4] = weights[i];
+		if (i % 4 == 3 || i == weights.size() - 1)
+		{
+			returnWeights.push_back(vec4ftWeights);
+			Vector4FT emptyVector4FT(0);
+			vec4ftWeights = emptyVector4FT;
+		}
+		i++;
 	}
 	return returnWeights;
 }
@@ -1461,7 +1480,7 @@ void wxGraphicD3D12::GenerateAmbientMap()
 		&texDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		&optClear,
-		IID_PPV_ARGS(&m_AmbientMap)));
+		IID_PPV_ARGS(&m_AmbientMap1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
 	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount);
@@ -1472,7 +1491,7 @@ void wxGraphicD3D12::GenerateAmbientMap()
 	srvDesc.Format = DXGI_FORMAT_R16_UNORM;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.MipLevels = 1;
-	m_device->CreateShaderResourceView(m_AmbientMap.Get(), &srvDesc, cbvHandle);
+	m_device->CreateShaderResourceView(m_AmbientMap1.Get(), &srvDesc, cbvHandle);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
 	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount);
@@ -1482,7 +1501,37 @@ void wxGraphicD3D12::GenerateAmbientMap()
 	rtvDesc.Format = DXGI_FORMAT_R16_UNORM;
 	rtvDesc.Texture2D.MipSlice = 0;
 	rtvDesc.Texture2D.PlaneSlice = 0;
-	m_device->CreateRenderTargetView(m_AmbientMap.Get(), &rtvDesc, rtvHandle);
+	m_device->CreateRenderTargetView(m_AmbientMap1.Get(), &rtvDesc, rtvHandle);
+
+	ThrowIfFailed(m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&texDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		&optClear,
+		IID_PPV_ARGS(&m_AmbientMap2)));
+
+	cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + 1);
+
+	srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Format = DXGI_FORMAT_R16_UNORM;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = 1;
+	m_device->CreateShaderResourceView(m_AmbientMap2.Get(), &srvDesc, cbvHandle);
+
+	rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount + 1);
+
+	rtvDesc = {};
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	rtvDesc.Format = DXGI_FORMAT_R16_UNORM;
+	rtvDesc.Texture2D.MipSlice = 0;
+	rtvDesc.Texture2D.PlaneSlice = 0;
+	m_device->CreateRenderTargetView(m_AmbientMap2.Get(), &rtvDesc, rtvHandle);
+
 }
 
 void wxGraphicD3D12::GenerateRandomVectorTexture()
