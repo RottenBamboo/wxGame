@@ -103,11 +103,11 @@ float4 PSMain(PSOutput input) : SV_Target
 	float2 texOffset;
 	if (g_horizontalBlur >= 1.0f)
 	{
-		texOffset = float2(DimensionWidth, 0.0f);
+		texOffset = float2(float(1/DimensionWidth), 0.0f);
 	}
 	else
 	{
-		texOffset = float2(0.0f, DimensionHeight);
+		texOffset = float2(0.0f, float(1/DimensionHeight));
 	}
 
 	// The center value always contributes to the sum.

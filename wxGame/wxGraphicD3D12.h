@@ -238,7 +238,7 @@ namespace wxGame {
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
 		void PopulateSSAOCommandList();
-		void PopulateBlurSSAOCommandList();
+		void PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool toFirst);
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
 		void UpdateShadowMatrix(void);

@@ -706,13 +706,13 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
-void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList()
+void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool toFirst)
 {
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap2.Get(),
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount + 1);	//blurAmbiemtMap
+	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount + int(!toFirst));	//blurAmbiemtMap
 
 	float clearColor[] = { 1.0f,1.0f,1.0f,1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -722,15 +722,19 @@ void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList()
 	m_commandList->SetPipelineState(m_BlurSsaoPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
+	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
+
 	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount);
+	srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + int(toFirst));
 	m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//AmbientMap
 
 	m_commandList->IASetVertexBuffers(0, 0, nullptr);
 	m_commandList->IASetIndexBuffer(nullptr);
 
 	m_commandList->DrawInstanced(6, 1, 0, 0);
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap2.Get(),
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
@@ -751,12 +755,12 @@ void wxGraphicD3D12::PopulateCommandList()
 
 	PopulateNormalCommandList();
 	PopulateSSAOCommandList(); 
-	m_constSSAOBuff.horzBlur = 1.f; 
+	m_constSSAOBuff.horzBlur = 1.f;
 	UpdateSSAO(GetTimer());
-	PopulateBlurSSAOCommandList();
-	m_constSSAOBuff.horzBlur = 0.f;
+	PopulateBlurSSAOCommandList(m_AmbientMap2, false);
+	m_constSSAOBuff.horzBlur = 1.f;
 	UpdateSSAO(GetTimer());
-	PopulateBlurSSAOCommandList();
+	PopulateBlurSSAOCommandList(m_AmbientMap1, true);
 	PopulateShadowMapCommandList();
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
@@ -790,7 +794,7 @@ void wxGraphicD3D12::PopulateCommandList()
 		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + 1);
+		srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount);
 		m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//ambient map
 		
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
