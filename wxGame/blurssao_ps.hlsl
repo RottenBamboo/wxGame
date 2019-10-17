@@ -38,7 +38,7 @@ cbuffer ssaoMatrix:register(b2)
 }
 
 static const int gBlurRadius = 5;
-Texture2D g_inputMap : register(t0);
+Texture2D g_ambientmap : register(t6);
 Texture2D g_normalmap : register(t3);
 Texture2D g_depthMap : register(t4);//g_shadowMap
 Texture2D g_randomVecorMap : register(t5);
@@ -111,7 +111,7 @@ float4 PSMain(PSOutput input) : SV_Target
 	}
 
 	// The center value always contributes to the sum.
-	float4 color = BlurWeightsArray[gBlurRadius] * g_inputMap.SampleLevel(g_PointClampSampler, input.uv, 0.0);
+	float4 color = BlurWeightsArray[gBlurRadius] * g_ambientmap.SampleLevel(g_PointClampSampler, input.uv, 0.0);
 	float totalWeight = BlurWeightsArray[gBlurRadius];
 
 	float3 centerNormal = g_normalmap.SampleLevel(g_PointClampSampler, input.uv, 0.0f).xyz;
@@ -142,7 +142,7 @@ float4 PSMain(PSOutput input) : SV_Target
 			float weight = BlurWeightsArray[i + gBlurRadius];
 
 			// Add neighbor pixel to blur.
-			color += weight * g_inputMap.SampleLevel(
+			color += weight * g_ambientmap.SampleLevel(
 				g_PointClampSampler, tex, 0.0);
 
 			totalWeight += weight;

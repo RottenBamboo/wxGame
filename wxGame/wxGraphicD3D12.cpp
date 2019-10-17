@@ -722,9 +722,9 @@ void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList()
 	m_commandList->SetPipelineState(m_BlurSsaoPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	D3D12_GPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount);
-	m_commandList->SetGraphicsRootDescriptorTable(0, cbvHandle);	//AmbientMap
+	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount);
+	m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//AmbientMap
 
 	m_commandList->IASetVertexBuffers(0, 0, nullptr);
 	m_commandList->IASetIndexBuffer(nullptr);
@@ -790,7 +790,7 @@ void wxGraphicD3D12::PopulateCommandList()
 		srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_NORMAL_MAP + i) * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//normalmap
 		srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount);
+		srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + 1);
 		m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//ambient map
 		
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
