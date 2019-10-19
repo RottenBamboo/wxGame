@@ -129,13 +129,12 @@ namespace wxGame {
 		struct wxSSAOConstant
 		{
 			Vector4FT offsetVectors[14];
+			Vector4FT blurWeights[3];
 			float occlusionRadius;
 			float occlusionFadeStart;
 			float occlusionFadeEnd;
 			float surfaceEpsilon;
 			Vector2FT ScreenSize;
-			float horzBlur;
-			Vector4FT blurWeights[3];
 		};
 
 		void* m_pCBSSAOBegin;
@@ -238,7 +237,7 @@ namespace wxGame {
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
 		void PopulateSSAOCommandList();
-		void PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool toFirst);
+		void PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal);
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
 		void UpdateShadowMatrix(void);

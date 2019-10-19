@@ -34,7 +34,7 @@ struct PSOutput
 cbuffer ssaoMatrix:register(b2)
 {
 	float4 g_offsetVectors[14];
-
+	float4 blurWeights[3];
 	float g_occlusionRadius;
 	float g_occlusionFadeStart;
 	float g_occlusionFadeEnd;

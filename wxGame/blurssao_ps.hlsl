@@ -23,18 +23,21 @@ cbuffer cmatrix:register(b1)
 	float4 viewPos;
 }
 
+cbuffer cParamContants:register(b3)
+{
+	bool isHorizontal;
+}
+
 cbuffer ssaoMatrix:register(b2)
 {
 	float4 g_offsetVectors[14];
-
+	float4 blurWeights[3];
 	float g_occlusionRadius;
 	float g_occlusionFadeStart;
 	float g_occlusionFadeEnd;
 	float g_surfaceEpsilon;
 	float DimensionWidth;
 	float DimensionHeight;
-	float g_horizontalBlur;
-	float4 blurWeights[3];
 }
 
 static const int gBlurRadius = 5;
@@ -101,7 +104,7 @@ float4 PSMain(PSOutput input) : SV_Target
 	};
 
 	float2 texOffset;
-	if (g_horizontalBlur >= 1.0f)
+	if (isHorizontal)
 	{
 		texOffset = float2(float(1/DimensionWidth), 0.0f);
 	}

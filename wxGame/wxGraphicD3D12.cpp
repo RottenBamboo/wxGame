@@ -291,7 +291,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ranges[5].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SSAO_CONSTANT_COUNT, 2, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //ssao constant
 		ranges[6].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, AmbientMapCount, 6, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //ssao map
 
-		CD3DX12_ROOT_PARAMETER1 rootParameters[9];
+		CD3DX12_ROOT_PARAMETER1 rootParameters[10];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
 		rootParameters[1].InitAsShaderResourceView(1, 0);//material resource view
 		rootParameters[2].InitAsShaderResourceView(2, 0);//transform matrix resource view
@@ -301,6 +301,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		rootParameters[6].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_ALL);
 		rootParameters[7].InitAsDescriptorTable(1, &ranges[5], D3D12_SHADER_VISIBILITY_ALL);
 		rootParameters[8].InitAsDescriptorTable(1, &ranges[6], D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[9].InitAsConstants(1, 3);		//ssao blur horizontal or vertical
 
 		D3D12_STATIC_SAMPLER_DESC sampleDesc[7];
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
@@ -706,14 +707,17 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
-void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool toFirst)
+void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal)
 {
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
+	//blurAmbiemtMap horizontal is next to the origin ambient map.
+	//blurAmbientMap vertical use the origin ambient map render target as the final render target
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount + int(!toFirst));	//blurAmbiemtMap
-
+	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount + int(isHorizontal));
+																							
+																							
 	float clearColor[] = { 1.0f,1.0f,1.0f,1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, nullptr);
@@ -726,9 +730,12 @@ void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> 
 	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
 
+	// Use the other ambient map srv
 	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + int(toFirst));
+	srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + int(!isHorizontal));
 	m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//AmbientMap
+
+	m_commandList->SetGraphicsRoot32BitConstant(9, isHorizontal, 0);	//horizontal or vertical blur
 
 	m_commandList->IASetVertexBuffers(0, 0, nullptr);
 	m_commandList->IASetIndexBuffer(nullptr);
@@ -754,13 +761,12 @@ void wxGraphicD3D12::PopulateCommandList()
 	m_commandList->SetGraphicsRootDescriptorTable(3, srvConstantBuff);
 
 	PopulateNormalCommandList();
-	PopulateSSAOCommandList(); 
-	m_constSSAOBuff.horzBlur = 1.f;
-	UpdateSSAO(GetTimer());
-	PopulateBlurSSAOCommandList(m_AmbientMap2, false);
-	m_constSSAOBuff.horzBlur = 1.f;
-	UpdateSSAO(GetTimer());
-	PopulateBlurSSAOCommandList(m_AmbientMap1, true);
+	PopulateSSAOCommandList();
+	for (int i = 0; i != 3; i++)
+	{
+		PopulateBlurSSAOCommandList(m_AmbientMap2, true);
+		PopulateBlurSSAOCommandList(m_AmbientMap1, false);
+	}
 	PopulateShadowMapCommandList();
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);

@@ -102,6 +102,6 @@ float4 PSMain(PSOutput input) : SV_Target
 	float4 litColor;
 	litColor.xyz = directLight + ambient; 
 	litColor.w = 0.0f;
-	return litColor;
+	return ambientFactor;
 }
 
