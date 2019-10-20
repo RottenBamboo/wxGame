@@ -30,9 +30,9 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_ssao_viewport(0.f,0.f, static_cast<float>((width) / 2), static_cast<float>((height) / 2)),
 	m_ssao_scissorRect(0,0, static_cast<float>((width) / 2), static_cast<float>((height) / 2)),
 	m_rtvDescriptorSize(0),
-	m_cameraMoveBaseSpeed(0.5f),
+	m_cameraMoveBaseSpeed(0.05f),
 	m_cameraRotationSpeed(0.015f),
-	m_defaultCameraPosition({ 0.f,300.f,300.f,1.f }),
+	m_defaultCameraPosition({ 0.f,10.f,10.f,1.f }),
 	m_defaultLookAt({ 0.0f,0.f,0.f,1.0f}),
 	m_defaultUp({ 0.f,1.f,0.f,0.f }),
 	cameraDistance({ 0.f,0.f,0.f,1.f })
@@ -646,8 +646,6 @@ void wxGame::wxGraphicD3D12::PopulateNormalCommandList()
 	m_commandList->SetPipelineState(m_DrawNormalPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	//srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_COUNT) * m_TypedDescriptorSize;
-	//m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//depth map
 	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
 	{
 		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
@@ -821,7 +819,7 @@ void wxGraphicD3D12::OnUpdate(wxTimer *timer)
 	UpdateSunLight(timer);
 	UpdateConstantBuffer();
 	UpdateSSAO(timer);
-	CheckControllerInput();
+	CheckControllerInput(timer);
 }
 
 // Render the scene.
@@ -881,7 +879,7 @@ void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 								  Vector4FT({ 0.f, 0.f, 0.f, 1.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
-	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-100,100,100,-100,-1000,1000);
+	Matrix4X4FT LightOthgraphicMatrix = BuildOthographicMatrixForLH(-20,20,20,-20,-10,100);
 	Matrix4X4FT LightTransformNDC = {
 		0.5f, 0.0f, 0.0f, 0.0f,
 		0.0f, -0.5f, 0.0f, 0.0f,
@@ -908,7 +906,7 @@ void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
 	m_sunLightBuff.Direction.element[1] = Direction.element[1];
 	m_sunLightBuff.Direction.element[2] = Direction.element[2];
 
-	m_sunLightBuff.Position = Vector3FT({ 0.f, 300.f, 300.f });
+	m_sunLightBuff.Position = Vector3FT({ 0.f, 30.f, 30.f });
 	Vector4FT Position = { m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f };
 	RotateYAxis(Position, mSunAngleAxisY);
 	m_sunLightBuff.Position.element[0] = Position.element[0];
@@ -935,10 +933,10 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	m_constSSAOBuff.offsetVectors[12] = m_offsets[12];
 	m_constSSAOBuff.offsetVectors[13] = m_offsets[13];
 
-	m_constSSAOBuff.occlusionRadius = 2.f;
-	m_constSSAOBuff.occlusionFadeStart = 0.8f;
-	m_constSSAOBuff.occlusionFadeEnd = 4.f;
-	m_constSSAOBuff.surfaceEpsilon = 0.2f;
+	m_constSSAOBuff.occlusionRadius = 0.25f;
+	m_constSSAOBuff.occlusionFadeStart = 0.1f;
+	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
+	m_constSSAOBuff.surfaceEpsilon = 0.025f;
 	m_constSSAOBuff.ScreenSize.element[0] = GetWidth();
 	m_constSSAOBuff.ScreenSize.element[1] = GetHeight();
 
@@ -950,12 +948,9 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 void wxGame::wxGraphicD3D12::UpdateBlurWidget()
 {
 	std::vector<Vector4FT> BlurWidget = CalcGaussWeights(2.5f);
-	for (int i = 0; i != 3; i++)
-	{
-		m_constSSAOBuff.blurWeights[0] = BlurWidget[0];
-		m_constSSAOBuff.blurWeights[1] = BlurWidget[1];
-		m_constSSAOBuff.blurWeights[2] = BlurWidget[2];
-	}
+	m_constSSAOBuff.blurWeights[0] = BlurWidget[0];
+	m_constSSAOBuff.blurWeights[1] = BlurWidget[1];
+	m_constSSAOBuff.blurWeights[2] = BlurWidget[2];
 }
 
 std::vector<Vector4FT> wxGame::wxGraphicD3D12::CalcGaussWeights(float sigma)
@@ -1986,7 +1981,7 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_sunLight), (void**)&m_sunLight);
 
 	m_sunLightBuff.Direction = Vector3FT({ 0.f, 0.f, -1.f });
-	m_sunLightBuff.Position = Vector3FT({ 300.f, 300.f, -300.f });
+	m_sunLightBuff.Position = Vector3FT({ 30.f, 30.f, -30.f });
 	m_sunLightBuff.Strength = Vector3FT({ 1.f,1.f,1.f });
 	m_sunLightBuff.FalloffEnd = 0.f;
 	m_sunLightBuff.FalloffStart = 0.f;
@@ -2003,7 +1998,7 @@ void wxGraphicD3D12::CreateSunLightBuffer()
 	m_device->CreateConstantBufferView(&m_cbvSunLight, cbvHandle);	//const light variable
 }
 
-void wxGraphicD3D12::CheckControllerInput()
+void wxGraphicD3D12::CheckControllerInput(wxTimer* timer)
 {
 	DWORD dwResult = 0;
 	for (DWORD i = 0; i < XUSER_MAX_COUNT; i++)
@@ -2034,7 +2029,7 @@ void wxGraphicD3D12::CheckControllerInput()
 				{
 			
 
-					float magnitudeR = sqrt(RX*RX + RY * RY);
+					float magnitudeR = sqrt(RX * RX + RY * RY);
 					if (RX * RX < 9000000)
 					{
 						RX = 0;
@@ -2063,11 +2058,11 @@ void wxGraphicD3D12::CheckControllerInput()
 					//determine how far the controller is pushed
 					float magnitude = sqrt(LX*LX + LY * LY);
 
-					if (LX * LX < 9000000)
+					if (LX * LX < 90000000)
 					{
 						LX = 0;
 					}
-					if (LY * LY < 9000000)
+					if (LY * LY < 90000000)
 					{
 						LY = 0;
 					}

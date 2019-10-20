@@ -241,7 +241,7 @@ namespace wxGame {
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(void);
 		void UpdateShadowMatrix(void);
-		void CheckControllerInput(void);
+		void CheckControllerInput(wxTimer* timer);
 		int	GetSceneGeometryNodeCount();
 		void GenerateShadowMap();
 		void GenerateCameraDepthMap();
