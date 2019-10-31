@@ -114,6 +114,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BaseTreeNode.h" />
+    <ClInclude Include="Intersection.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneManager.h" />
@@ -138,6 +139,7 @@
     <ClCompile Include="BMPDecoder.cpp" />
     <ClCompile Include="DataBuffer.cpp" />
     <ClCompile Include="FileLoader.cpp" />
+    <ClCompile Include="Intersection.cpp" />
     <ClCompile Include="OpenGEXDecoder.h" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneDecoder.h" />
