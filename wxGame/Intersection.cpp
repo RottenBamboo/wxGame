@@ -1,1 +1,2 @@
-#include "Intersection.h"
+#pragma once
+//#include "Intersection.h"

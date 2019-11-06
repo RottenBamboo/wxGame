@@ -60,7 +60,7 @@ namespace wxGame {
 			TYPE_SHADOW_MAP,
 			TYPE_END
 		};
-
+	public:
 		struct Vertex
 		{
 			Vector4FT position;
@@ -137,6 +137,7 @@ namespace wxGame {
 			Vector2FT ScreenSize;
 		};
 
+	private:
 		void* m_pCBSSAOBegin;
 		wxSSAOConstant m_constSSAOBuff;
 		void* m_pCBDataBegin;			//constant buffer data pointer
