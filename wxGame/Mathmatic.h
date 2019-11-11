@@ -7,7 +7,8 @@
 #define SET_ROW	1;
 #define SET_COL	0;
 #define MATH_ABS(x) (x > 0 ? x : -x)
-
+#define MATH_MAX(x,y) (x > y ? x : y)
+#define MATH_MIN(x,y) (x < y ? x : y)
 namespace Mathmatic
 {
 	template <int count, typename T>
@@ -149,6 +150,26 @@ namespace Mathmatic
 		for (int itr = 0; itr != count; itr++)
 		{
 			vec1.element[itr] = vec1.element[itr] - vec2.element[itr];
+		}
+		return vec1;
+	}
+
+	template <template<int, typename> class TT = Vector, int count, typename T>
+	TT<count, T>& operator/(TT<count, T>& vec1, float factor)
+	{
+		for (int itr = 0; itr != count; itr++)
+		{
+			vec1.element[itr] = (1 / factor) * vec1.element[itr];
+		}
+		return vec1;
+	}
+
+	template <template<int, typename> class TT = Vector, int count, typename T>
+	TT<count, T>& operator*(TT<count, T>& vec1, float factor)
+	{
+		for (int itr = 0; itr != count; itr++)
+		{
+			vec1.element[itr] = factor * vec1.element[itr];
 		}
 		return vec1;
 	}

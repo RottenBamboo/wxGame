@@ -20,12 +20,20 @@ using namespace Mathmatic;
 			Center = center; Radius = radius;
 		}
 		BoundingBox() :Center(), Radius() {}
-		bool CompulateBoundingBox(wxGraphicD3D12::Vertex& vertex, size_t length)
+		void CompulateBoundingBox(wxGraphicD3D12::Vertex& vertex, size_t length)
 		{
+			Box AABB;
 			for (int i = 0; i < length; i++)
 			{
-				
+				AABB.Min.element[0] = MATH_MIN(vertex.position.element[0], AABB.Min.element[0]);
+				AABB.Min.element[1] = MATH_MIN(vertex.position.element[1], AABB.Min.element[1]);
+				AABB.Min.element[2] = MATH_MIN(vertex.position.element[2], AABB.Min.element[2]);
+				AABB.Max.element[0] = MATH_MAX(vertex.position.element[0], AABB.Max.element[0]);
+				AABB.Max.element[1] = MATH_MAX(vertex.position.element[1], AABB.Max.element[1]);
+				AABB.Max.element[2] = MATH_MAX(vertex.position.element[2], AABB.Max.element[2]);
 			}
+			Center = AABB.Min + (AABB.Max - AABB.Min) / 2;
+			Radius = (AABB.Max - AABB.Min) / 2;
 		}
 	};
 
