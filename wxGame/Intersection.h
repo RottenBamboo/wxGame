@@ -44,7 +44,6 @@ namespace wxGame
 			m_boundingBox.Center = AABB.Min + (AABB.Max - AABB.Min) / 2;
 			m_boundingBox.Radius = (AABB.Max - AABB.Min) / 2;
 		}
-	private:
 		BoundingBox m_boundingBox;
 	};
 }

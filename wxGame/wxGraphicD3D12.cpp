@@ -1090,9 +1090,9 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 
 							CreateVertexBuffer(*vertexMix, elementCount);
 
-							//BoundingBox Box;
-							//Box.CompulateBoundingBox(*vertexMix, elementCount);
-							//m_vec_boundingBox.push_back(Box);
+							BoundingBoxMgr Box;
+							Box.CompulateBoundingBox(*vertexMix, elementCount);
+							m_vec_boundingBox.push_back(Box.m_boundingBox);
 
 							delete[] vertexMix;
 							const auto indexCount = pMesh->GetIndexCount();
