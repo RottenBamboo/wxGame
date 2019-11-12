@@ -7,6 +7,8 @@
 #include "SceneObject.h"
 #include "SceneNode.h"
 #include "SceneManager.h"
+#include "Intersection.h"
+#include "Primitive.h"
 
 #define SUNLIGHT_COUNT (int)1
 #define SSAO_CONSTANT_COUNT (int)1
@@ -61,13 +63,6 @@ namespace wxGame {
 			TYPE_END
 		};
 	public:
-		struct Vertex
-		{
-			Vector4FT position;
-			Vector2FT uv;
-			Vector3FT Normal;
-			Vector3FT tangent;
-		};
 
 		struct wxObjConst
 		{
@@ -204,6 +199,7 @@ namespace wxGame {
 		std::vector<ComPtr<ID3D12Resource>> m_vec_objConstRes;
 		std::vector<wxObjConst> m_vec_objConstStut;
 		D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvSunLight;
+		std::vector<BoundingBox> m_vec_boundingBox;
 
 		float angleAxisY;
 		float mSunAngleAxisY;

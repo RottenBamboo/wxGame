@@ -116,6 +116,7 @@
     <ClInclude Include="BaseTreeNode.h" />
     <ClInclude Include="Intersection.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Primitive.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneObject.h" />

@@ -1,9 +1,13 @@
 #pragma once
 #include "Mathmatic.h"
 #include "wxGraphicD3D12.h"
+#include "Primitive.h"
 
 using namespace Mathmatic;
+using namespace wxGame;
 
+namespace wxGame
+{
 	struct Box
 	{
 	public:
@@ -20,7 +24,12 @@ using namespace Mathmatic;
 			Center = center; Radius = radius;
 		}
 		BoundingBox() :Center(), Radius() {}
-		void CompulateBoundingBox(wxGraphicD3D12::Vertex& vertex, size_t length)
+	};
+
+	class BoundingBoxMgr
+	{
+	public:
+		void CompulateBoundingBox(Vertex& vertex, size_t length)
 		{
 			Box AABB;
 			for (int i = 0; i < length; i++)
@@ -32,14 +41,10 @@ using namespace Mathmatic;
 				AABB.Max.element[1] = MATH_MAX(vertex.position.element[1], AABB.Max.element[1]);
 				AABB.Max.element[2] = MATH_MAX(vertex.position.element[2], AABB.Max.element[2]);
 			}
-			Center = AABB.Min + (AABB.Max - AABB.Min) / 2;
-			Radius = (AABB.Max - AABB.Min) / 2;
+			m_boundingBox.Center = AABB.Min + (AABB.Max - AABB.Min) / 2;
+			m_boundingBox.Radius = (AABB.Max - AABB.Min) / 2;
 		}
-	};
-
-
-	class BoundingBoxMgr
-	{
 	private:
 		BoundingBox m_boundingBox;
 	};
+}
