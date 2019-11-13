@@ -27,6 +27,17 @@ namespace wxGame
 		BoundingBox() :Center(0), Extents(0) {}
 	};
 
+	struct BoundingSphere
+	{
+		Vector3FT Center;
+		float Radius;
+	};
+
+	struct BoundingFrustum
+	{
+		Vector3FT Origin;
+	};
+
 	class BoundingBoxMgr
 	{
 	public:
@@ -51,6 +62,14 @@ namespace wxGame
 			m_boundingBox.Center = AABB.Min + (AABB.Max - AABB.Min) / 2;
 			m_boundingBox.Extents = (AABB.Max - AABB.Min) / 2;
 		}
+		void CompulateBoundingSphere(Vertex& vertex, size_t length)
+		{
+			CompulateBoundingBox(vertex, length);
+			m_boundingBox.Extents;
+			m_boundingSphere.Center = m_boundingBox.Center;
+			m_boundingSphere.Radius = sqrt(pow(m_boundingBox.Extents.element[0], 2) + pow(m_boundingBox.Extents.element[1], 2) + pow(m_boundingBox.Extents.element[2], 2));
+		}
 		BoundingBox m_boundingBox;
+		BoundingSphere m_boundingSphere;
 	};
 }
