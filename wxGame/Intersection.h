@@ -62,6 +62,60 @@ namespace wxGame
 			m_boundingBox.Center = AABB.Min + (AABB.Max - AABB.Min) / 2;
 			m_boundingBox.Extents = (AABB.Max - AABB.Min) / 2;
 		}
+
+		void TransformAABB(Matrix4X4FT matrix)
+		{
+			Vertex vertex[8];
+			for (int i = 0; i != 8; i++)
+			{
+				vertex[0].position.element[0] = m_boundingBox.Center.element[0] - m_boundingBox.Extents.element[0];
+				vertex[0].position.element[1] = m_boundingBox.Center.element[1] - m_boundingBox.Extents.element[1];
+				vertex[0].position.element[2] = m_boundingBox.Center.element[2] - m_boundingBox.Extents.element[2];
+				vertex[0].position.element[3] = 1;
+
+				vertex[1].position.element[0] = m_boundingBox.Center.element[0] + m_boundingBox.Extents.element[0];
+				vertex[1].position.element[1] = m_boundingBox.Center.element[1] - m_boundingBox.Extents.element[1];
+				vertex[1].position.element[2] = m_boundingBox.Center.element[2] - m_boundingBox.Extents.element[2];
+				vertex[1].position.element[3] = 1;
+
+				vertex[2].position.element[0] = m_boundingBox.Center.element[0] + m_boundingBox.Extents.element[0];
+				vertex[2].position.element[1] = m_boundingBox.Center.element[1] - m_boundingBox.Extents.element[1];
+				vertex[2].position.element[2] = m_boundingBox.Center.element[2] + m_boundingBox.Extents.element[2];
+				vertex[2].position.element[3] = 1;
+
+				vertex[3].position.element[0] = m_boundingBox.Center.element[0] - m_boundingBox.Extents.element[0];
+				vertex[3].position.element[1] = m_boundingBox.Center.element[1] - m_boundingBox.Extents.element[1];
+				vertex[3].position.element[2] = m_boundingBox.Center.element[2] + m_boundingBox.Extents.element[2];
+				vertex[3].position.element[3] = 1;
+
+				vertex[4].position.element[0] = m_boundingBox.Center.element[0] - m_boundingBox.Extents.element[0];
+				vertex[4].position.element[1] = m_boundingBox.Center.element[1] + m_boundingBox.Extents.element[1];
+				vertex[4].position.element[2] = m_boundingBox.Center.element[2] - m_boundingBox.Extents.element[2];
+				vertex[4].position.element[3] = 1;
+
+				vertex[5].position.element[0] = m_boundingBox.Center.element[0] + m_boundingBox.Extents.element[0];
+				vertex[5].position.element[1] = m_boundingBox.Center.element[1] + m_boundingBox.Extents.element[1];
+				vertex[5].position.element[2] = m_boundingBox.Center.element[2] - m_boundingBox.Extents.element[2];
+				vertex[5].position.element[3] = 1;
+
+				vertex[6].position.element[0] = m_boundingBox.Center.element[0] + m_boundingBox.Extents.element[0];
+				vertex[6].position.element[1] = m_boundingBox.Center.element[1] + m_boundingBox.Extents.element[1];
+				vertex[6].position.element[2] = m_boundingBox.Center.element[2] + m_boundingBox.Extents.element[2];
+				vertex[6].position.element[3] = 1;
+
+				vertex[7].position.element[0] = m_boundingBox.Center.element[0] - m_boundingBox.Extents.element[0];
+				vertex[7].position.element[1] = m_boundingBox.Center.element[1] + m_boundingBox.Extents.element[1];
+				vertex[7].position.element[2] = m_boundingBox.Center.element[2] + m_boundingBox.Extents.element[2];
+				vertex[7].position.element[3] = 1;
+			}
+			
+			for (int i = 0; i != 8; i++)
+			{
+				VectorMultiMatrix(vertex[i].position, matrix);
+			}
+			CompulateBoundingBox(vertex[0], 8);
+		}
+
 		void CompulateBoundingSphere(Vertex& vertex, size_t length)
 		{
 			CompulateBoundingBox(vertex, length);
