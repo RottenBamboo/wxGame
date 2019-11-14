@@ -875,7 +875,7 @@ void wxGraphicD3D12::UpdateConstantBuffer(void)
 void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 {	
 	//fix the light direction temporary
-	Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f }),\
+	Matrix4X4FT LightViewMatrix = BuildViewMatrix(Vector4FT({ m_sunLightBuff.Position[0], m_sunLightBuff.Position[1], m_sunLightBuff.Position[2], 1.f }),\
 								  Vector4FT({ 0.f, 0.f, 0.f, 1.f}), \
 								  Vector4FT({ 0.f, 1.f, 0.f, 0.f }));//light up direction.
 
@@ -900,18 +900,18 @@ void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
 	int k = mSunAngleAxisY / 360;
 	mSunAngleAxisY = mSunAngleAxisY - k * 360;
 	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -1.f });//don't accumulate the direction value,but set default value every time;
-	Vector4FT Direction = { m_sunLightBuff.Direction.element[0], m_sunLightBuff.Direction.element[1], m_sunLightBuff.Direction.element[2], 0.f };
+	Vector4FT Direction = { m_sunLightBuff.Direction[0], m_sunLightBuff.Direction[1], m_sunLightBuff.Direction[2], 0.f };
 	RotateYAxis(Direction, mSunAngleAxisY);
-	m_sunLightBuff.Direction.element[0] = Direction.element[0];
-	m_sunLightBuff.Direction.element[1] = Direction.element[1];
-	m_sunLightBuff.Direction.element[2] = Direction.element[2];
+	m_sunLightBuff.Direction[0] = Direction[0];
+	m_sunLightBuff.Direction[1] = Direction[1];
+	m_sunLightBuff.Direction[2] = Direction[2];
 
 	m_sunLightBuff.Position = Vector3FT({ 0.f, 30.f, 30.f });
-	Vector4FT Position = { m_sunLightBuff.Position.element[0], m_sunLightBuff.Position.element[1], m_sunLightBuff.Position.element[2], 1.f };
+	Vector4FT Position = { m_sunLightBuff.Position[0], m_sunLightBuff.Position[1], m_sunLightBuff.Position[2], 1.f };
 	RotateYAxis(Position, mSunAngleAxisY);
-	m_sunLightBuff.Position.element[0] = Position.element[0];
-	m_sunLightBuff.Position.element[1] = Position.element[1];
-	m_sunLightBuff.Position.element[2] = Position.element[2];
+	m_sunLightBuff.Position[0] = Position[0];
+	m_sunLightBuff.Position[1] = Position[1];
+	m_sunLightBuff.Position[2] = Position[2];
 
 	memcpy(m_pSunLightDataBegin, &m_sunLightBuff, sizeof(wxLight));
 }
@@ -937,8 +937,8 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	m_constSSAOBuff.occlusionFadeStart = 0.1f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
 	m_constSSAOBuff.surfaceEpsilon = 0.025f;
-	m_constSSAOBuff.ScreenSize.element[0] = GetWidth();
-	m_constSSAOBuff.ScreenSize.element[1] = GetHeight();
+	m_constSSAOBuff.ScreenSize[0] = GetWidth();
+	m_constSSAOBuff.ScreenSize[1] = GetHeight();
 
 	UpdateBlurWidget();
 
@@ -973,7 +973,7 @@ std::vector<Vector4FT> wxGame::wxGraphicD3D12::CalcGaussWeights(float sigma)
 	for (int i = 0; i < weights.size();)
 	{
 		weights[i] /= weightSum;
-		vec4ftWeights.element[i % 4] = weights[i];
+		vec4ftWeights[i % 4] = weights[i];
 		if (i % 4 == 3 || i == weights.size() - 1)
 		{
 			returnWeights.push_back(vec4ftWeights);
@@ -1039,10 +1039,10 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 									for (uint32_t i = 0; i < length; i = i + 3)
 									{
 										size_t label = i / 3;
-										vertexMix[label].position.element[0] = pPosition[i];
-										vertexMix[label].position.element[1] = pPosition[i + 1];
-										vertexMix[label].position.element[2] = pPosition[i + 2];
-										vertexMix[label].position.element[3] = 1.f;
+										vertexMix[label].position[0] = pPosition[i];
+										vertexMix[label].position[1] = pPosition[i + 1];
+										vertexMix[label].position[2] = pPosition[i + 2];
+										vertexMix[label].position[3] = 1.f;
 									}
 								}
 								if (v_property_array.GetAttribute() == "texcoord")
@@ -1051,8 +1051,8 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 									for (uint32_t i = 0; i < length; i = i + 2)
 									{
 										size_t label = i / 2;
-										vertexMix[label].uv.element[0] = pTexcoord[i];
-										vertexMix[label].uv.element[1] = pTexcoord[i + 1];
+										vertexMix[label].uv[0] = pTexcoord[i];
+										vertexMix[label].uv[1] = pTexcoord[i + 1];
 									}
 								}
 								if (v_property_array.GetAttribute() == "normal")
@@ -1061,9 +1061,9 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 									for (uint32_t i = 0; i < length; i = i + 3)
 									{
 										size_t label = i / 3;
-										vertexMix[label].Normal.element[0] = pNormal[i];
-										vertexMix[label].Normal.element[1] = pNormal[i + 1];
-										vertexMix[label].Normal.element[2] = pNormal[i + 2];
+										vertexMix[label].Normal[0] = pNormal[i];
+										vertexMix[label].Normal[1] = pNormal[i + 1];
+										vertexMix[label].Normal[2] = pNormal[i + 2];
 									}
 								}
 								if (v_property_array.GetAttribute() == "tangent")
@@ -1072,9 +1072,9 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 									for (uint32_t i = 0; i < length; i = i + 3)
 									{
 										size_t label = i / 3;
-										vertexMix[label].tangent.element[0] = pTangent[i];
-										vertexMix[label].tangent.element[1] = pTangent[i + 1];
-										vertexMix[label].tangent.element[2] = pTangent[i + 2];
+										vertexMix[label].tangent[0] = pTangent[i];
+										vertexMix[label].tangent[1] = pTangent[i + 1];
+										vertexMix[label].tangent[2] = pTangent[i + 2];
 									}
 								}
 							}
@@ -1118,9 +1118,9 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 								mat.Roughness = matNode->GetRoughness();
 								mat.Roughness = 0.7;
 								Color tempColor = matNode->GetDiffuseColor();
-								mat.diffuse = Vector4FT({ tempColor.Value.element[0], tempColor.Value.element[1], tempColor.Value.element[2] , 1.0f});
+								mat.diffuse = Vector4FT({ tempColor.Value[0], tempColor.Value[1], tempColor.Value[2] , 1.0f});
 								//mat.m_AmbientOcclusion = matNode->GetAmbientOcclusion();
-								mat.FresnelR0 = Vector3FT({ matNode->GetSpecular().Value.element[0], matNode->GetSpecular().Value.element[1], matNode->GetSpecular().Value.element[2] });
+								mat.FresnelR0 = Vector3FT({ matNode->GetSpecular().Value[0], matNode->GetSpecular().Value[1], matNode->GetSpecular().Value[2] });
 								m_vec_matRes.push_back(ComPtr<ID3D12Resource>());
 								m_vec_matStut.push_back(mat);
 								m_MaterialCount++;
@@ -1941,8 +1941,8 @@ void wxGame::wxGraphicD3D12::CreateSSAOBuffer()
 	m_constSSAOBuff.occlusionFadeStart = 0.2f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
 	m_constSSAOBuff.surfaceEpsilon = 0.05f;
-	m_constSSAOBuff.ScreenSize.element[0] = GetWidth();
-	m_constSSAOBuff.ScreenSize.element[1] = GetHeight();
+	m_constSSAOBuff.ScreenSize[0] = GetWidth();
+	m_constSSAOBuff.ScreenSize[1] = GetHeight();
 	// Map the constant buffers. Note that unlike D3D11, the resource 
 	// does not need to be unmapped for use by the GPU. In this sample, 
 	// the resource stays 'permenantly' mapped to avoid overhead with 

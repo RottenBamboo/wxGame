@@ -93,6 +93,11 @@ namespace Mathmatic
 			return *this;
 		}
 
+		T& operator[](size_t i)
+		{
+			return element[i];
+		}
+
 		T element[count];
 	};
 

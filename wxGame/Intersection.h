@@ -45,19 +45,19 @@ namespace wxGame
 		{
 			Vertex* curr_vertex = &vertex;
 			Box AABB;
-			AABB.Min.element[0] = curr_vertex->position.element[0];
-			AABB.Min.element[1] = curr_vertex->position.element[1];
-			AABB.Min.element[2] = curr_vertex->position.element[2];
+			AABB.Min[0] = curr_vertex->position[0];
+			AABB.Min[1] = curr_vertex->position[1];
+			AABB.Min[2] = curr_vertex->position[2];
 			AABB.Max = AABB.Min; 
 			int i = 0;
 			for ( ;i < length; i++)
 			{
-				AABB.Min.element[0] = MATH_MIN(curr_vertex[i].position.element[0], AABB.Min.element[0]);
-				AABB.Min.element[1] = MATH_MIN(curr_vertex[i].position.element[1], AABB.Min.element[1]);
-				AABB.Min.element[2] = MATH_MIN(curr_vertex[i].position.element[2], AABB.Min.element[2]);
-				AABB.Max.element[0] = MATH_MAX(curr_vertex[i].position.element[0], AABB.Max.element[0]);
-				AABB.Max.element[1] = MATH_MAX(curr_vertex[i].position.element[1], AABB.Max.element[1]);
-				AABB.Max.element[2] = MATH_MAX(curr_vertex[i].position.element[2], AABB.Max.element[2]);
+				AABB.Min[0] = MATH_MIN(curr_vertex[i].position[0], AABB.Min[0]);
+				AABB.Min[1] = MATH_MIN(curr_vertex[i].position[1], AABB.Min[1]);
+				AABB.Min[2] = MATH_MIN(curr_vertex[i].position[2], AABB.Min[2]);
+				AABB.Max[0] = MATH_MAX(curr_vertex[i].position[0], AABB.Max[0]);
+				AABB.Max[1] = MATH_MAX(curr_vertex[i].position[1], AABB.Max[1]);
+				AABB.Max[2] = MATH_MAX(curr_vertex[i].position[2], AABB.Max[2]);
 			}
 			m_boundingBox.Center = AABB.Min + (AABB.Max - AABB.Min) / 2;
 			m_boundingBox.Extents = (AABB.Max - AABB.Min) / 2;
@@ -68,45 +68,45 @@ namespace wxGame
 			Vertex vertex[8];
 			for (int i = 0; i != 8; i++)
 			{
-				vertex[0].position.element[0] = m_boundingBox.Center.element[0] - m_boundingBox.Extents.element[0];
-				vertex[0].position.element[1] = m_boundingBox.Center.element[1] - m_boundingBox.Extents.element[1];
-				vertex[0].position.element[2] = m_boundingBox.Center.element[2] - m_boundingBox.Extents.element[2];
-				vertex[0].position.element[3] = 1;
+				vertex[0].position[0] = m_boundingBox.Center[0] - m_boundingBox.Extents[0];
+				vertex[0].position[1] = m_boundingBox.Center[1] - m_boundingBox.Extents[1];
+				vertex[0].position[2] = m_boundingBox.Center[2] - m_boundingBox.Extents[2];
+				vertex[0].position[3] = 1;
 
-				vertex[1].position.element[0] = m_boundingBox.Center.element[0] + m_boundingBox.Extents.element[0];
-				vertex[1].position.element[1] = m_boundingBox.Center.element[1] - m_boundingBox.Extents.element[1];
-				vertex[1].position.element[2] = m_boundingBox.Center.element[2] - m_boundingBox.Extents.element[2];
-				vertex[1].position.element[3] = 1;
+				vertex[1].position[0] = m_boundingBox.Center[0] + m_boundingBox.Extents[0];
+				vertex[1].position[1] = m_boundingBox.Center[1] - m_boundingBox.Extents[1];
+				vertex[1].position[2] = m_boundingBox.Center[2] - m_boundingBox.Extents[2];
+				vertex[1].position[3] = 1;
 
-				vertex[2].position.element[0] = m_boundingBox.Center.element[0] + m_boundingBox.Extents.element[0];
-				vertex[2].position.element[1] = m_boundingBox.Center.element[1] - m_boundingBox.Extents.element[1];
-				vertex[2].position.element[2] = m_boundingBox.Center.element[2] + m_boundingBox.Extents.element[2];
-				vertex[2].position.element[3] = 1;
+				vertex[2].position[0] = m_boundingBox.Center[0] + m_boundingBox.Extents[0];
+				vertex[2].position[1] = m_boundingBox.Center[1] - m_boundingBox.Extents[1];
+				vertex[2].position[2] = m_boundingBox.Center[2] + m_boundingBox.Extents[2];
+				vertex[2].position[3] = 1;
 
-				vertex[3].position.element[0] = m_boundingBox.Center.element[0] - m_boundingBox.Extents.element[0];
-				vertex[3].position.element[1] = m_boundingBox.Center.element[1] - m_boundingBox.Extents.element[1];
-				vertex[3].position.element[2] = m_boundingBox.Center.element[2] + m_boundingBox.Extents.element[2];
-				vertex[3].position.element[3] = 1;
+				vertex[3].position[0] = m_boundingBox.Center[0] - m_boundingBox.Extents[0];
+				vertex[3].position[1] = m_boundingBox.Center[1] - m_boundingBox.Extents[1];
+				vertex[3].position[2] = m_boundingBox.Center[2] + m_boundingBox.Extents[2];
+				vertex[3].position[3] = 1;
 
-				vertex[4].position.element[0] = m_boundingBox.Center.element[0] - m_boundingBox.Extents.element[0];
-				vertex[4].position.element[1] = m_boundingBox.Center.element[1] + m_boundingBox.Extents.element[1];
-				vertex[4].position.element[2] = m_boundingBox.Center.element[2] - m_boundingBox.Extents.element[2];
-				vertex[4].position.element[3] = 1;
+				vertex[4].position[0] = m_boundingBox.Center[0] - m_boundingBox.Extents[0];
+				vertex[4].position[1] = m_boundingBox.Center[1] + m_boundingBox.Extents[1];
+				vertex[4].position[2] = m_boundingBox.Center[2] - m_boundingBox.Extents[2];
+				vertex[4].position[3] = 1;
 
-				vertex[5].position.element[0] = m_boundingBox.Center.element[0] + m_boundingBox.Extents.element[0];
-				vertex[5].position.element[1] = m_boundingBox.Center.element[1] + m_boundingBox.Extents.element[1];
-				vertex[5].position.element[2] = m_boundingBox.Center.element[2] - m_boundingBox.Extents.element[2];
-				vertex[5].position.element[3] = 1;
+				vertex[5].position[0] = m_boundingBox.Center[0] + m_boundingBox.Extents[0];
+				vertex[5].position[1] = m_boundingBox.Center[1] + m_boundingBox.Extents[1];
+				vertex[5].position[2] = m_boundingBox.Center[2] - m_boundingBox.Extents[2];
+				vertex[5].position[3] = 1;
 
-				vertex[6].position.element[0] = m_boundingBox.Center.element[0] + m_boundingBox.Extents.element[0];
-				vertex[6].position.element[1] = m_boundingBox.Center.element[1] + m_boundingBox.Extents.element[1];
-				vertex[6].position.element[2] = m_boundingBox.Center.element[2] + m_boundingBox.Extents.element[2];
-				vertex[6].position.element[3] = 1;
+				vertex[6].position[0] = m_boundingBox.Center[0] + m_boundingBox.Extents[0];
+				vertex[6].position[1] = m_boundingBox.Center[1] + m_boundingBox.Extents[1];
+				vertex[6].position[2] = m_boundingBox.Center[2] + m_boundingBox.Extents[2];
+				vertex[6].position[3] = 1;
 
-				vertex[7].position.element[0] = m_boundingBox.Center.element[0] - m_boundingBox.Extents.element[0];
-				vertex[7].position.element[1] = m_boundingBox.Center.element[1] + m_boundingBox.Extents.element[1];
-				vertex[7].position.element[2] = m_boundingBox.Center.element[2] + m_boundingBox.Extents.element[2];
-				vertex[7].position.element[3] = 1;
+				vertex[7].position[0] = m_boundingBox.Center[0] - m_boundingBox.Extents[0];
+				vertex[7].position[1] = m_boundingBox.Center[1] + m_boundingBox.Extents[1];
+				vertex[7].position[2] = m_boundingBox.Center[2] + m_boundingBox.Extents[2];
+				vertex[7].position[3] = 1;
 			}
 			
 			for (int i = 0; i != 8; i++)
@@ -121,7 +121,7 @@ namespace wxGame
 			CompulateBoundingBox(vertex, length);
 			m_boundingBox.Extents;
 			m_boundingSphere.Center = m_boundingBox.Center;
-			m_boundingSphere.Radius = sqrt(pow(m_boundingBox.Extents.element[0], 2) + pow(m_boundingBox.Extents.element[1], 2) + pow(m_boundingBox.Extents.element[2], 2));
+			m_boundingSphere.Radius = sqrt(pow(m_boundingBox.Extents[0], 2) + pow(m_boundingBox.Extents[1], 2) + pow(m_boundingBox.Extents[2], 2));
 		}
 		BoundingBox m_boundingBox;
 		BoundingSphere m_boundingSphere;
