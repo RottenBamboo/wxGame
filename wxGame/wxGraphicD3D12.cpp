@@ -743,7 +743,26 @@ void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
+void wxGraphicD3D12::DrawBoundingBox()
+{/*
+	vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
+	vertexBufferView.StrideInBytes = sizeof(Vertex);
+	vertexBufferView.SizeInBytes = vertexBufferSize;
+	vec_VertexBufferView.push_back(vertexBufferView);
 
+	indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+	indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+	indexBufferView.SizeInBytes = sizeof(indice) * size;
+	vec_IndexBufferView.push_back(indexBufferView);*/
+
+	//m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	//for (int i = 0; i != m_vec_boundingBox.size(); i++)
+	//{
+	//	m_commandList->IASetVertexBuffers(0, 1, &(m_vec_VertexBufferView[i]));
+	//	m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
+	//	//m_commandList->DrawIndexedInstanced(m_vec_boundingBox, 1, 0, 0, 0);
+	//}
+}
 void wxGraphicD3D12::PopulateCommandList()
 {
 	ThrowIfFailed(m_commandAllocator->Reset());
@@ -1092,9 +1111,10 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 
 							CreateVertexBuffer(*vertexMix, elementCount);
 
-							BoundingBoxMgr Box;
-							Box.CompulateBoundingBox(*vertexMix, elementCount);
-							m_vec_boundingBox.push_back(Box.m_boundingBox);
+							BoundingGeometryMgr BoxMgr;
+							BoundingBox box;
+							BoxMgr.CompulateBoundingBox(box, *vertexMix, elementCount);
+							m_vec_boundingBox.push_back(box);
 
 							delete[] vertexMix;
 							const auto indexCount = pMesh->GetIndexCount();

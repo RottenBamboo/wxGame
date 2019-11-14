@@ -236,6 +236,7 @@ namespace wxGame {
 		void PopulateNormalCommandList();
 		void PopulateSSAOCommandList();
 		void PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal);
+		void DrawBoundingBox();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(wxTimer* timer);
 		void UpdateShadowMatrix(void);
