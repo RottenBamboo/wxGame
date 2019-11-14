@@ -174,11 +174,10 @@ namespace wxGame {
 		UINT m_rtvDescriptorSize;
 
 		// App resources.
-		ComPtr<ID3D12Resource> m_vertexBuffer;
-		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_VertexBufferView;
-		D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_IndexBufferView;
+		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_boundingBoxVertexBufferView;
+		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_boundingBoxIndexBufferView;
 
 		std::vector<ID3D12Resource*> m_vec_texture;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
@@ -194,6 +193,7 @@ namespace wxGame {
 		std::vector<std::string> m_vec_TextureTitle;
 		unsigned int m_numIndices;
 		std::vector<unsigned int> m_vec_numIndices;
+		std::vector<unsigned int> m_vec_boundingBoxNumIndices;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_matRes;
 		std::vector<wxMaterial> m_vec_matStut;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_objConstRes;
@@ -223,9 +223,8 @@ namespace wxGame {
 		void CreateTexture(std::vector<std::string>&);
 		void ParserDataFromScene(std::vector<std::string>&);
 		void LoadDataFromOGEX(std::vector<std::string>&);
-		void LoadDefaultVertexIndexData();
-		void CreateVertexBuffer(Vertex&, size_t);
-		void CreateIndexBuffer(int&, size_t);
+		void CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& vec_VertexBufferView, Vertex&, size_t);
+		void CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, int&, size_t);
 		void CreateConstantMaterialBuffer(std::vector<wxMaterial>&);
 		void CreateSunLightBuffer();
 		void CreateObjConst(std::vector<wxObjConst>&);

@@ -19,7 +19,7 @@ namespace wxGame
 	struct BoundingBoxVertexIndex
 	{
 		Vertex Vertex;
-		std::vector<unsigned int> Index;
+		std::vector<int> Index;
 	};
 	struct BoundingBox
 	{

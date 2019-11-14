@@ -19,7 +19,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_pObjConstDataBegin(nullptr),
 	m_numIndices(0),
 	angleAxisY(0.f),
-	angleAxisYPerSecond((2 * PI) / 15.f),
+	angleAxisYPerSecond((2 * PI) / 30.f),
 	mSunAngleAxisY(0.f),
 	mSunAngleAxisYPerSec(0.5f),
 	m_frameIndex(0),
@@ -743,26 +743,7 @@ void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
-void wxGraphicD3D12::DrawBoundingBox()
-{/*
-	vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
-	vertexBufferView.StrideInBytes = sizeof(Vertex);
-	vertexBufferView.SizeInBytes = vertexBufferSize;
-	vec_VertexBufferView.push_back(vertexBufferView);
 
-	indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-	indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-	indexBufferView.SizeInBytes = sizeof(indice) * size;
-	vec_IndexBufferView.push_back(indexBufferView);*/
-
-	//m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-	//for (int i = 0; i != m_vec_boundingBox.size(); i++)
-	//{
-	//	m_commandList->IASetVertexBuffers(0, 1, &(m_vec_VertexBufferView[i]));
-	//	m_commandList->IASetIndexBuffer(&m_vec_IndexBufferView[i]);
-	//	//m_commandList->DrawIndexedInstanced(m_vec_boundingBox, 1, 0, 0, 0);
-	//}
-}
 void wxGraphicD3D12::PopulateCommandList()
 {
 	ThrowIfFailed(m_commandAllocator->Reset());
@@ -807,6 +788,7 @@ void wxGraphicD3D12::PopulateCommandList()
 	//draw objects
 	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
 	{
+		//m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += i * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);	//texture
@@ -822,6 +804,11 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//ambient map
 		
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
+
+		//m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+		//m_commandList->IASetVertexBuffers(0, 1, &(m_vec_boundingBoxVertexBufferView[i]));
+		//m_commandList->IASetIndexBuffer(&m_vec_boundingBoxIndexBufferView[i]);
+		//m_commandList->DrawIndexedInstanced(m_vec_boundingBoxNumIndices[i], 1, 0, 0, 0);
 	}
 
 	// Record commands.
@@ -1109,12 +1096,15 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 								m_vec_objConstStut.push_back(objConst);
 							}
 
-							CreateVertexBuffer(*vertexMix, elementCount);
+							CreateVertexBuffer(m_vec_VertexBufferView, *vertexMix, elementCount);
 
 							BoundingGeometryMgr BoxMgr;
 							BoundingBox box;
 							BoxMgr.CompulateBoundingBox(box, *vertexMix, elementCount);
-							m_vec_boundingBox.push_back(box);
+							m_vec_boundingBox.push_back(box); 
+							CreateVertexBuffer(m_vec_boundingBoxVertexBufferView, box.CornerPosition.Vertex, 8);
+							CreateIndexBuffer(m_vec_boundingBoxIndexBufferView, box.CornerPosition.Index[0], 16);
+							m_vec_boundingBoxNumIndices.push_back(16);
 
 							delete[] vertexMix;
 							const auto indexCount = pMesh->GetIndexCount();
@@ -1128,7 +1118,7 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 									Indice[i] = pPosition[i];
 								}
 							}
-							CreateIndexBuffer(*Indice, indexCount);
+							CreateIndexBuffer(m_vec_IndexBufferView, *Indice, indexCount);
 							m_vec_numIndices.push_back(indexCount);
 							delete[] Indice;
 
@@ -1157,103 +1147,7 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 	CreateConstantMaterialBuffer(m_vec_matStut);
 }
 
-void wxGraphicD3D12::LoadDefaultVertexIndexData()
-{
-	HRESULT hr;
-	// Create the vertex buffer.
-	{
-		// Define the geometry for a triangle.
-		Vertex triangleVertices[] =
-		{
-			{ { 0.25f, 0.25f, -0.25f, 1.0f }, { 1.0f, 0.0f } },//0
-			{ { 0.25f, -0.25f, -0.25f, 1.0f }, { 1.0f, 1.0f } },//1
-			{ { -0.25f, 0.25f, -0.25f, 1.0f },{  0.0f, 0.0f } },//2
-			{ { -0.25f, -0.25f, -0.25f, 1.0f }, { 0.0f, 1.0f } },//3
-			{ { 0.25f, 0.25f, 0.25f, 1.0f },{ 0.0f, 0.0f } },//4
-			{ { 0.25f, -0.25f, 0.25f, 1.0f },{ 0.0f, 1.0f } },//5
-			{ { -0.25f, 0.25f, 0.25f, 1.0f },{ 1.0f, 0.0f } },//6
-			{ { -0.25f, -0.25f, 0.25f, 1.0f },{ 1.0f, 1.0f } },//7
-		};
-
-		const UINT vertexBufferSize = sizeof(triangleVertices);
-
-		// Note: using upload heaps to transfer static data like vert buffers is not 
-		// recommended. Every time the GPU needs it, the upload heap will be marshalled 
-		// over. Please read up on Default Heap usage. An upload heap is used here for 
-		// code simplicity and because there are very few verts to actually transfer.
-		ThrowIfFailed(m_device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&m_vertexBuffer)));
-
-		// Copy the triangle data to the vertex buffer.
-		UINT8* pVertexDataBegin;
-		CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
-		ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-		memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
-		m_vertexBuffer->Unmap(0, nullptr);
-
-		// Initialize the vertex buffer view.
-		m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-		m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-		m_vertexBufferView.SizeInBytes = vertexBufferSize;
-	}
-
-	{
-		int triangleIndices[] = {
-			0,1,3,
-			0,3,2,
-			//4,5,1,
-			//4,1,0,
-			//6,7,5,
-			//6,5,4,
-			//2,3,7,
-			//2,7,6,
-		};
-		const unsigned int indicesBufferSize = sizeof(triangleIndices);
-		m_numIndices = indicesBufferSize / sizeof(int);
-
-		D3D12_HEAP_PROPERTIES indexHeapProperties;
-		indexHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-		indexHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		indexHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		indexHeapProperties.CreationNodeMask = 1;
-		indexHeapProperties.VisibleNodeMask = 1;
-
-		//resource Description for index buffer
-		D3D12_RESOURCE_DESC indexBufferDesc;
-		indexBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		indexBufferDesc.Alignment = 0;
-		indexBufferDesc.Width = indicesBufferSize;
-		indexBufferDesc.Height = 1;
-		indexBufferDesc.DepthOrArraySize = 1;
-		indexBufferDesc.MipLevels = 1;
-		indexBufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-		indexBufferDesc.SampleDesc.Count = 1;
-		indexBufferDesc.SampleDesc.Quality = 0;
-		indexBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		indexBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		indexHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-		hr = m_device->CreateCommittedResource(&indexHeapProperties, D3D12_HEAP_FLAG_NONE, \
-			&indexBufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_indexBuffer), (void**)&m_indexBuffer);
-
-		void* pIndexDataBegin;
-		D3D12_RANGE readRange1 = { 0,0 };
-		m_indexBuffer->Map(0, &readRange1, &pIndexDataBegin);
-		memcpy(pIndexDataBegin, triangleIndices, sizeof(triangleIndices));
-		m_indexBuffer->Unmap(0, nullptr);
-
-		m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-		m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-		m_indexBufferView.SizeInBytes = indicesBufferSize;
-	}
-}
-
-void wxGraphicD3D12::CreateVertexBuffer(Vertex& vertex, size_t size)
+void wxGraphicD3D12::CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& vec_VertexBufferView, Vertex& vertex, size_t size)
 {
 	const UINT vertexBufferSize = sizeof(vertex) * size;
 	ID3D12Resource* pVertexBuffer;
@@ -1277,13 +1171,14 @@ void wxGraphicD3D12::CreateVertexBuffer(Vertex& vertex, size_t size)
 	pVertexBuffer->Unmap(0, nullptr);
 
 	// Initialize the vertex buffer view.
-	m_vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
-	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-	m_vertexBufferView.SizeInBytes = vertexBufferSize;
-	m_vec_VertexBufferView.push_back(m_vertexBufferView);
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
+	vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
+	vertexBufferView.StrideInBytes = sizeof(Vertex);
+	vertexBufferView.SizeInBytes = vertexBufferSize;
+	vec_VertexBufferView.push_back(vertexBufferView);
 }
 
-void wxGraphicD3D12::CreateIndexBuffer(int& indice, size_t size)
+void wxGraphicD3D12::CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, int& indice, size_t size)
 {
 	HRESULT hr;
 	D3D12_HEAP_PROPERTIES indexHeapProperties;
@@ -1318,10 +1213,11 @@ void wxGraphicD3D12::CreateIndexBuffer(int& indice, size_t size)
 	memcpy(pIndexDataBegin, &indice, sizeof(indice) * size);
 	indexBuffer->Unmap(0, nullptr);
 
-	m_indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-	m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-	m_indexBufferView.SizeInBytes = sizeof(indice) * size;
-	m_vec_IndexBufferView.push_back(m_indexBufferView);
+	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
+	indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+	indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+	indexBufferView.SizeInBytes = sizeof(indice) * size;
+	vec_IndexBufferView.push_back(indexBufferView);
 }
 
 void wxGraphicD3D12::GenerateShadowMap()
