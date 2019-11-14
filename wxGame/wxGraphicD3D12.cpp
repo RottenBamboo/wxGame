@@ -19,6 +19,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_pObjConstDataBegin(nullptr),
 	m_numIndices(0),
 	angleAxisY(0.f),
+	angleAxisYPerSecond((2 * PI) / 15.f),
 	mSunAngleAxisY(0.f),
 	mSunAngleAxisYPerSec(0.5f),
 	m_frameIndex(0),
@@ -816,8 +817,8 @@ void wxGraphicD3D12::PopulateCommandList()
 // Update frame-based values.
 void wxGraphicD3D12::OnUpdate(wxTimer *timer)
 {
+	UpdateConstantBuffer(timer);
 	UpdateSunLight(timer);
-	UpdateConstantBuffer();
 	UpdateSSAO(timer);
 	CheckControllerInput(timer);
 }
@@ -863,8 +864,9 @@ void wxGraphicD3D12::WaitForPreviousFrame()
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
-void wxGraphicD3D12::UpdateConstantBuffer(void)
+void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 {
+	angleAxisY += angleAxisYPerSecond * timer->DeltaTime();
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.cameraPos = m_defaultCameraPosition;
 	constBuff.viewPos = m_defaultLookAt;

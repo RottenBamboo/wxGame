@@ -202,6 +202,7 @@ namespace wxGame {
 		std::vector<BoundingBox> m_vec_boundingBox;
 
 		float angleAxisY;
+		float angleAxisYPerSecond;
 		float mSunAngleAxisY;
 		double mSunAngleAxisYPerSec;
 		// Synchronization objects.
@@ -236,7 +237,7 @@ namespace wxGame {
 		void PopulateSSAOCommandList();
 		void PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal);
 		void WaitForPreviousFrame();
-		void UpdateConstantBuffer(void);
+		void UpdateConstantBuffer(wxTimer* timer);
 		void UpdateShadowMatrix(void);
 		void CheckControllerInput(wxTimer* timer);
 		int	GetSceneGeometryNodeCount();

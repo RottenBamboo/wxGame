@@ -42,6 +42,7 @@ PSOutput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal 
 {
 	PSOutput result = (PSOutput)0.0f;
 	objConst objC = g_objConst[0];
+	objC.TransMatrix = mul(rotatMatrix, objC.TransMatrix);
 	result.position = mul(perspectiveMatrix, mul(viewMatrix, mul(objC.TransMatrix, position)));
 	result.PositionWorld = mul(objC.TransMatrix, float4(position.xyz, 1.0f));
 	result.uv.x = uv.x;
