@@ -18,8 +18,12 @@ namespace wxGame
 
 	struct BoundingBoxVertexIndex
 	{
-		Vertex Vertex;
+		std::vector<Vertex> Vertex;
 		std::vector<int> Index;
+		BoundingBoxVertexIndex()
+		{
+			Vertex.resize(8);
+		}
 	};
 	struct BoundingBox
 	{
@@ -76,56 +80,54 @@ namespace wxGame
 
 			for (int i = 0; i != 8; i++)
 			{
-				VectorMultiMatrix(boundingBox.CornerPosition.Vertex.position, matrix);
+				VectorMultiMatrix(boundingBox.CornerPosition.Vertex[i].position, matrix);
 			}
-			CompulateBoundingBox(boundingBox, boundingBox.CornerPosition.Vertex, 8);
+			CompulateBoundingBox(boundingBox, boundingBox.CornerPosition.Vertex[0], 8);
 		}
 
 		void ComputeBoundingBoxCornerPosition(BoundingBox& boundingBox)
 		{
-			for (int i = 0; i != 8; i++)
-			{
-				boundingBox.CornerPosition.Vertex.position[0] = boundingBox.Center[0] - boundingBox.Extents[0];
-				boundingBox.CornerPosition.Vertex.position[1] = boundingBox.Center[1] - boundingBox.Extents[1];
-				boundingBox.CornerPosition.Vertex.position[2] = boundingBox.Center[2] - boundingBox.Extents[2];
-				boundingBox.CornerPosition.Vertex.position[3] = 1;
+			boundingBox.CornerPosition.Vertex[0].position[0] = boundingBox.Center[0] - boundingBox.Extents[0];
+			boundingBox.CornerPosition.Vertex[0].position[1] = boundingBox.Center[1] - boundingBox.Extents[1];
+			boundingBox.CornerPosition.Vertex[0].position[2] = boundingBox.Center[2] - boundingBox.Extents[2];
+			boundingBox.CornerPosition.Vertex[0].position[3] = 1;
 
-				boundingBox.CornerPosition.Vertex.position[0] = boundingBox.Center[0] + boundingBox.Extents[0];
-				boundingBox.CornerPosition.Vertex.position[1] = boundingBox.Center[1] - boundingBox.Extents[1];
-				boundingBox.CornerPosition.Vertex.position[2] = boundingBox.Center[2] - boundingBox.Extents[2];
-				boundingBox.CornerPosition.Vertex.position[3] = 1;
+			boundingBox.CornerPosition.Vertex[1].position[0] = boundingBox.Center[0] + boundingBox.Extents[0];
+			boundingBox.CornerPosition.Vertex[1].position[1] = boundingBox.Center[1] - boundingBox.Extents[1];
+			boundingBox.CornerPosition.Vertex[1].position[2] = boundingBox.Center[2] - boundingBox.Extents[2];
+			boundingBox.CornerPosition.Vertex[1].position[3] = 1;
 
-				boundingBox.CornerPosition.Vertex.position[0] = boundingBox.Center[0] + boundingBox.Extents[0];
-				boundingBox.CornerPosition.Vertex.position[1] = boundingBox.Center[1] - boundingBox.Extents[1];
-				boundingBox.CornerPosition.Vertex.position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
-				boundingBox.CornerPosition.Vertex.position[3] = 1;
+			boundingBox.CornerPosition.Vertex[2].position[0] = boundingBox.Center[0] + boundingBox.Extents[0];
+			boundingBox.CornerPosition.Vertex[2].position[1] = boundingBox.Center[1] - boundingBox.Extents[1];
+			boundingBox.CornerPosition.Vertex[2].position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
+			boundingBox.CornerPosition.Vertex[2].position[3] = 1;
 
-				boundingBox.CornerPosition.Vertex.position[0] = boundingBox.Center[0] - boundingBox.Extents[0];
-				boundingBox.CornerPosition.Vertex.position[1] = boundingBox.Center[1] - boundingBox.Extents[1];
-				boundingBox.CornerPosition.Vertex.position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
-				boundingBox.CornerPosition.Vertex.position[3] = 1;
+			boundingBox.CornerPosition.Vertex[3].position[0] = boundingBox.Center[0] - boundingBox.Extents[0];
+			boundingBox.CornerPosition.Vertex[3].position[1] = boundingBox.Center[1] - boundingBox.Extents[1];
+			boundingBox.CornerPosition.Vertex[3].position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
+			boundingBox.CornerPosition.Vertex[3].position[3] = 1;
 
-				boundingBox.CornerPosition.Vertex.position[0] = boundingBox.Center[0] - boundingBox.Extents[0];
-				boundingBox.CornerPosition.Vertex.position[1] = boundingBox.Center[1] + boundingBox.Extents[1];
-				boundingBox.CornerPosition.Vertex.position[2] = boundingBox.Center[2] - boundingBox.Extents[2];
-				boundingBox.CornerPosition.Vertex.position[3] = 1;
+			boundingBox.CornerPosition.Vertex[4].position[0] = boundingBox.Center[0] - boundingBox.Extents[0];
+			boundingBox.CornerPosition.Vertex[4].position[1] = boundingBox.Center[1] + boundingBox.Extents[1];
+			boundingBox.CornerPosition.Vertex[4].position[2] = boundingBox.Center[2] - boundingBox.Extents[2];
+			boundingBox.CornerPosition.Vertex[4].position[3] = 1;
 
-				boundingBox.CornerPosition.Vertex.position[0] = boundingBox.Center[0] + boundingBox.Extents[0];
-				boundingBox.CornerPosition.Vertex.position[1] = boundingBox.Center[1] + boundingBox.Extents[1];
-				boundingBox.CornerPosition.Vertex.position[2] = boundingBox.Center[2] - boundingBox.Extents[2];
-				boundingBox.CornerPosition.Vertex.position[3] = 1;
+			boundingBox.CornerPosition.Vertex[5].position[0] = boundingBox.Center[0] + boundingBox.Extents[0];
+			boundingBox.CornerPosition.Vertex[5].position[1] = boundingBox.Center[1] + boundingBox.Extents[1];
+			boundingBox.CornerPosition.Vertex[5].position[2] = boundingBox.Center[2] - boundingBox.Extents[2];
+			boundingBox.CornerPosition.Vertex[5].position[3] = 1;
 
-				boundingBox.CornerPosition.Vertex.position[0] = boundingBox.Center[0] + boundingBox.Extents[0];
-				boundingBox.CornerPosition.Vertex.position[1] = boundingBox.Center[1] + boundingBox.Extents[1];
-				boundingBox.CornerPosition.Vertex.position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
-				boundingBox.CornerPosition.Vertex.position[3] = 1;
+			boundingBox.CornerPosition.Vertex[6].position[0] = boundingBox.Center[0] + boundingBox.Extents[0];
+			boundingBox.CornerPosition.Vertex[6].position[1] = boundingBox.Center[1] + boundingBox.Extents[1];
+			boundingBox.CornerPosition.Vertex[6].position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
+			boundingBox.CornerPosition.Vertex[6].position[3] = 1;
 
-				boundingBox.CornerPosition.Vertex.position[0] = boundingBox.Center[0] - boundingBox.Extents[0];
-				boundingBox.CornerPosition.Vertex.position[1] = boundingBox.Center[1] + boundingBox.Extents[1];
-				boundingBox.CornerPosition.Vertex.position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
-				boundingBox.CornerPosition.Vertex.position[3] = 1;
-			}
-			boundingBox.CornerPosition.Index = {0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,1};
+			boundingBox.CornerPosition.Vertex[7].position[0] = boundingBox.Center[0] - boundingBox.Extents[0];
+			boundingBox.CornerPosition.Vertex[7].position[1] = boundingBox.Center[1] + boundingBox.Extents[1];
+			boundingBox.CornerPosition.Vertex[7].position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
+			boundingBox.CornerPosition.Vertex[7].position[3] = 1;
+
+			boundingBox.CornerPosition.Index = {0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,4};
 		}
 
 		void CompulateBoundingSphere(BoundingBox& boundingBox, Vertex& vertex, size_t length)

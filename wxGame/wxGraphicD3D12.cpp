@@ -19,7 +19,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_pObjConstDataBegin(nullptr),
 	m_numIndices(0),
 	angleAxisY(0.f),
-	angleAxisYPerSecond((2 * PI) / 30.f),
+	angleAxisYPerSecond((2 * PI) / 120.f),
 	mSunAngleAxisY(0.f),
 	mSunAngleAxisYPerSec(0.5f),
 	m_frameIndex(0),
@@ -788,7 +788,7 @@ void wxGraphicD3D12::PopulateCommandList()
 	//draw objects
 	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
 	{
-		//m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += i * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);	//texture
@@ -805,10 +805,10 @@ void wxGraphicD3D12::PopulateCommandList()
 		
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 
-		//m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-		//m_commandList->IASetVertexBuffers(0, 1, &(m_vec_boundingBoxVertexBufferView[i]));
-		//m_commandList->IASetIndexBuffer(&m_vec_boundingBoxIndexBufferView[i]);
-		//m_commandList->DrawIndexedInstanced(m_vec_boundingBoxNumIndices[i], 1, 0, 0, 0);
+		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_boundingBoxVertexBufferView[i]));
+		m_commandList->IASetIndexBuffer(&m_vec_boundingBoxIndexBufferView[i]);
+		m_commandList->DrawIndexedInstanced(m_vec_boundingBoxNumIndices[i], 1, 0, 0, 0);
 	}
 
 	// Record commands.
@@ -1102,7 +1102,7 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 							BoundingBox box;
 							BoxMgr.CompulateBoundingBox(box, *vertexMix, elementCount);
 							m_vec_boundingBox.push_back(box); 
-							CreateVertexBuffer(m_vec_boundingBoxVertexBufferView, box.CornerPosition.Vertex, 8);
+							CreateVertexBuffer(m_vec_boundingBoxVertexBufferView, box.CornerPosition.Vertex[0], 8);
 							CreateIndexBuffer(m_vec_boundingBoxIndexBufferView, box.CornerPosition.Index[0], 16);
 							m_vec_boundingBoxNumIndices.push_back(16);
 
