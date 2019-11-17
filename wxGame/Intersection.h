@@ -76,8 +76,6 @@ namespace wxGame
 
 		void TransformAABB(BoundingBox& boundingBox, Matrix4X4FT matrix)
 		{
-			ComputeBoundingBoxCornerPosition(boundingBox);
-
 			for (int i = 0; i != 8; i++)
 			{
 				VectorMultiMatrix(boundingBox.CornerPosition.Vertex[i].position, matrix);

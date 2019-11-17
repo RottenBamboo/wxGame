@@ -439,6 +439,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ComPtr<ID3DBlob> pixelSSAOShader;
 		ComPtr<ID3DBlob> vertexBlurSSAOShader;
 		ComPtr<ID3DBlob> pixelBlurSSAOShader;
+		ComPtr<ID3DBlob> vertexBoundingBoxShader;
+		ComPtr<ID3DBlob> pixelBoundingBoxShader;
 
 #if defined(_DEBUG)
 		// Enable better shader debugging with the graphics debugging tools.
@@ -507,6 +509,14 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		psoDesc.SampleDesc.Quality = 0;
 		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_defaultPipelineState)));
+
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\bounding_box_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexBoundingBoxShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\bounding_box_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelBoundingBoxShader, nullptr));
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC boundingBoxDesc = psoDesc;
+		boundingBoxDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		boundingBoxDesc.VS = CD3DX12_SHADER_BYTECODE(vertexBoundingBoxShader.Get());
+		boundingBoxDesc.PS = CD3DX12_SHADER_BYTECODE(pixelBoundingBoxShader.Get());
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&boundingBoxDesc, IID_PPV_ARGS(&m_boundingBoxPipelineState)));
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_v.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader1, nullptr));
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\shadow_map_p.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader1, nullptr));
@@ -804,8 +814,12 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//ambient map
 		
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
+	}
 
-		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	m_commandList->SetPipelineState(m_boundingBoxPipelineState.Get());
+	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
+	{
 		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_boundingBoxVertexBufferView[i]));
 		m_commandList->IASetIndexBuffer(&m_vec_boundingBoxIndexBufferView[i]);
 		m_commandList->DrawIndexedInstanced(m_vec_boundingBoxNumIndices[i], 1, 0, 0, 0);
@@ -823,8 +837,8 @@ void wxGraphicD3D12::PopulateCommandList()
 // Update frame-based values.
 void wxGraphicD3D12::OnUpdate(wxTimer *timer)
 {
-	UpdateConstantBuffer(timer);
 	UpdateSunLight(timer);
+	UpdateConstantBuffer(timer);
 	UpdateSSAO(timer);
 	CheckControllerInput(timer);
 }
@@ -876,7 +890,13 @@ void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.cameraPos = m_defaultCameraPosition;
 	constBuff.viewPos = m_defaultLookAt;
-	UpdateShadowMatrix();
+	for (int i = 0; i < m_vec_boundingBox.size(); i++)
+	{
+		BoundingGeometryMgr BoxMgr;		
+		BoxMgr.TransformAABB(m_vec_boundingBox[i], constBuff.rotatMatrix);
+		//memcpy(pBoundingVertexBuffer, &m_vec_boundingBox[i], sizeof(BoundingBox));
+		//memcpy(pBoundingIndexBuffer, &m_vec_boundingBoxNumIndices[i], sizeof(unsigned int));
+	}		
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
 }
 
@@ -1147,7 +1167,7 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 	CreateConstantMaterialBuffer(m_vec_matStut);
 }
 
-void wxGraphicD3D12::CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& vec_VertexBufferView, Vertex& vertex, size_t size)
+void wxGraphicD3D12::CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& vec_VertexBufferView, Vertex& vertex, size_t size, UINT8* vertexDataBegin)
 {
 	const UINT vertexBufferSize = sizeof(vertex) * size;
 	ID3D12Resource* pVertexBuffer;
@@ -1168,6 +1188,9 @@ void wxGraphicD3D12::CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& v
 	CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
 	ThrowIfFailed(pVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
 	memcpy(pVertexDataBegin, &vertex, vertexBufferSize);
+
+	ThrowIfFailed(pVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&vertexDataBegin)));
+
 	pVertexBuffer->Unmap(0, nullptr);
 
 	// Initialize the vertex buffer view.
@@ -1178,7 +1201,7 @@ void wxGraphicD3D12::CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& v
 	vec_VertexBufferView.push_back(vertexBufferView);
 }
 
-void wxGraphicD3D12::CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, int& indice, size_t size)
+void wxGraphicD3D12::CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, int& indice, size_t size, UINT8* indexDataBegin)
 {
 	HRESULT hr;
 	D3D12_HEAP_PROPERTIES indexHeapProperties;
@@ -1211,6 +1234,7 @@ void wxGraphicD3D12::CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec
 	D3D12_RANGE readRange1 = { 0,0 };
 	indexBuffer->Map(0, &readRange1, &pIndexDataBegin);
 	memcpy(pIndexDataBegin, &indice, sizeof(indice) * size);
+	ThrowIfFailed(indexBuffer->Map(0, &readRange1, reinterpret_cast<void**>(&indexDataBegin)));
 	indexBuffer->Unmap(0, nullptr);
 
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};

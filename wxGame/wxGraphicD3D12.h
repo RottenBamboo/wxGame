@@ -166,6 +166,7 @@ namespace wxGame {
 		ComPtr<ID3D12DescriptorHeap> m_srvHeap;
 		ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 		ComPtr<ID3D12PipelineState> m_defaultPipelineState;
+		ComPtr<ID3D12PipelineState> m_boundingBoxPipelineState;
 		ComPtr<ID3D12PipelineState> m_shadowMapPipelineState;
 		ComPtr<ID3D12PipelineState> m_DrawNormalPipelineState;
 		ComPtr<ID3D12PipelineState> m_SsaoPipelineState;
@@ -177,7 +178,9 @@ namespace wxGame {
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_VertexBufferView;
 		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_IndexBufferView;
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_boundingBoxVertexBufferView;
-		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_boundingBoxIndexBufferView;
+		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_boundingBoxIndexBufferView; 
+		UINT8* pBoundingVertexBuffer;
+		UINT8* pBoundingIndexBuffer;
 
 		std::vector<ID3D12Resource*> m_vec_texture;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
@@ -223,8 +226,8 @@ namespace wxGame {
 		void CreateTexture(std::vector<std::string>&);
 		void ParserDataFromScene(std::vector<std::string>&);
 		void LoadDataFromOGEX(std::vector<std::string>&);
-		void CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& vec_VertexBufferView, Vertex&, size_t);
-		void CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, int&, size_t);
+		void CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& vec_VertexBufferView, Vertex&, size_t, UINT8* pVertexDataBegin = nullptr);
+		void CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, int&, size_t, UINT8* pIndexDataBegin = nullptr);
 		void CreateConstantMaterialBuffer(std::vector<wxMaterial>&);
 		void CreateSunLightBuffer();
 		void CreateObjConst(std::vector<wxObjConst>&);
