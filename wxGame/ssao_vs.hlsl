@@ -52,22 +52,6 @@ static const float2 g_texCoords[6] =
 	float2(1.0f, 1.0f),
 	float2(1.0f, 0.0f),
 };
-//static const float2 g_texCoords[6] =
-//{
-//	float2(0.0f, 1.0f),
-//	float2(0.0f, 0.0f),
-//	float2(1.0f, 0.0f),
-//	float2(0.0f, 1.0f),
-//	float2(1.0f, 0.0f),
-//	float2(1.0f, 1.0f)
-//};
-
-struct objConst
-{
-	matrix TransMatrix;
-};
-
-StructuredBuffer<objConst> g_objConst : register(t2);
 
 PSOutput VSMain(uint vid : SV_VertexID)
 {

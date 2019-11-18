@@ -31,10 +31,22 @@ struct objConst
 
 StructuredBuffer<objConst> g_objConst : register(t2);
 
-PSOutput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal : NORMAL, float3 tangentU : TANGENT)
+static const float4 g_VectorSign[8] =
+{
+	float4(-1.f, -1.f, -1.f, 1.f),
+	float4(1.f, -1.f, -1.f, 1.f),
+	float4(1.f, -1.f, 1.f, 1.f),
+	float4(-1.f, -1.f, 1.f, 1.f),
+	float4(-1.f, 1.f, -1.f, 1.f),
+	float4(1.f, 1.f, -1.f, 1.f),
+	float4(1.f, 1.f, 1.f, 1.f),
+	float4(-1.f, 1.f, 1.f, 1.f),
+};
+
+PSOutput VSMain(uint vid : SV_VertexID)
 {
 	PSOutput result = (PSOutput)0.0f;
-	objConst objC = g_objConst[0];
-	result.position = mul(perspectiveMatrix, mul(viewMatrix, mul(objC.TransMatrix, position)));
+	objConst objC = g_objConst[0]; 
+	result.position = mul(perspectiveMatrix, mul(viewMatrix, mul(objC.TransMatrix, g_VectorSign[vid])));
 	return result;
 }

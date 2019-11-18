@@ -142,7 +142,7 @@ namespace wxGame {
 		void* m_pSunLightDataBegin;
 		wxObjConst m_objConst;
 		void* m_pObjConstDataBegin;
-		Vector4FT m_offsets[14];
+		Vector4FT m_offsets[14]; 
 
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
@@ -155,16 +155,10 @@ namespace wxGame {
 		ComPtr<ID3D12Device> m_device;
 		ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 		ComPtr<ID3D12Resource> m_depthStencil;
-		ComPtr<ID3D12Resource> m_vertexBuffer;
-		ComPtr<ID3D12Resource> m_indexBuffer;
-		ComPtr<ID3D12Resource> m_boundingBoxVertexBuffer;
-		ComPtr<ID3D12Resource> m_boundingBoxIndexBuffer;
-		ComPtr<ID3D12Resource> m_boundingBoxVertexUploadBuffer;
-		ComPtr<ID3D12Resource> m_boundingBoxIndexUploadBuffer;
 		ComPtr<ID3D12Resource> m_constantBuffer;
 		ComPtr<ID3D12Resource> m_sunLight;
 		ComPtr<ID3D12Resource> m_ssaoBuffer;
-
+		ComPtr<ID3D12Resource> m_indexBuffer;
 		ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 		ComPtr<ID3D12CommandQueue> m_commandQueue;
 		ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -184,9 +178,7 @@ namespace wxGame {
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_VertexBufferView;
 		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_IndexBufferView;
 		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_boundingBoxVertexBufferView;
-		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_boundingBoxIndexBufferView; 
-		UINT8* pBoundingVertexBuffer;
-		UINT8* pBoundingIndexBuffer;
+		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_boundingBoxIndexBufferView;
 
 		std::vector<ID3D12Resource*> m_vec_texture;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
@@ -232,8 +224,8 @@ namespace wxGame {
 		void CreateTexture(std::vector<std::string>&);
 		void ParserDataFromScene(std::vector<std::string>&);
 		void LoadDataFromOGEX(std::vector<std::string>&);
-		void CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& vec_VertexBufferView, ComPtr<ID3D12Resource> vertexBuffer, Vertex&, size_t, UINT8* pVertexDataBegin = nullptr);
-		void CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, ComPtr<ID3D12Resource> indexBuffer, int&, size_t, UINT8* pIndexDataBegin = nullptr);
+		void CreateVertexBuffer(std::vector<D3D12_VERTEX_BUFFER_VIEW>& vec_VertexBufferView, Vertex&, size_t);
+		void CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, int&, size_t);
 		void CreateConstantMaterialBuffer(std::vector<wxMaterial>&);
 		void CreateSunLightBuffer();
 		void CreateObjConst(std::vector<wxObjConst>&);
