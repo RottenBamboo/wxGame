@@ -896,6 +896,7 @@ void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 	for (int i = 0; i != m_vec_objConstStut.size(); i++)
 	{
 		Manager.TransformAABB(m_vec_objConstStut[i].boundingBox, constBuff.rotatMatrix);
+		memcpy(m_pObjConstDataBegin[i], &m_vec_objConstStut[i], sizeof(wxObjConst));
 	}
 }
 
@@ -1056,7 +1057,6 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 							SceneObjectMesh* pMesh = pGeometryObject->GetMesh();
 							size_t elementCount = pMesh->GetVertexCount();
 							Vertex* vertexMix = new Vertex[elementCount];
-							m_pObjConstDataBegin.resize(pMesh->GetVertexPropertiesCount());
 							for (uint32_t i = 0; i < pMesh->GetVertexPropertiesCount(); i++)
 							{
 								const SceneObjectVertexArray& v_property_array = pMesh->GetVertexPropertyArray(i);
@@ -1160,6 +1160,7 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 			}
 	}
 
+	m_pObjConstDataBegin.resize(m_vec_objConstStut.size());
 	CreateObjConst(m_vec_objConstStut);
 	CreateConstantMaterialBuffer(m_vec_matStut);
 }
