@@ -1101,24 +1101,21 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 								}
 							}
 
+							BoundingGeometryMgr BoxMgr;
+							BoundingBox box;
+							BoxMgr.CompulateBoundingBox(box, *vertexMix, elementCount);
+
 							SceneObjectTransform* transform = geoNode->GetTransform(0);
 							wxObjConst objConst;
 							if (transform)
 							{
 								objConst.linearTransMatrix = *(transform->GetTransformMatrix());
+								objConst.boundingBox = box;
 								m_vec_objConstRes.push_back(ComPtr<ID3D12Resource>());
 								m_vec_objConstStut.push_back(objConst);
 							}
 
 							CreateVertexBuffer(m_vec_VertexBufferView, *vertexMix, elementCount);
-
-							BoundingGeometryMgr BoxMgr;
-							BoundingBox box;
-							BoxMgr.CompulateBoundingBox(box, *vertexMix, elementCount);
-							m_vec_boundingBox.push_back(box); 
-							CreateVertexBuffer(m_vec_boundingBoxVertexBufferView, box.CornerPosition.Vertex[0], 8);
-							CreateIndexBuffer(m_vec_boundingBoxIndexBufferView, box.CornerPosition.Index[0], 16);
-							m_vec_boundingBoxNumIndices.push_back(16);
 
 							delete[] vertexMix;
 							const auto indexCount = pMesh->GetIndexCount();

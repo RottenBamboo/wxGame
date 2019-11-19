@@ -67,8 +67,10 @@ namespace wxGame {
 		struct wxObjConst
 		{
 			Matrix4X4FT linearTransMatrix;
+			BoundingBox boundingBox;
 			wxObjConst()
 			{
+				boundingBox = BoundingBox();
 				MatrixIdentity(linearTransMatrix);
 			}
 		};

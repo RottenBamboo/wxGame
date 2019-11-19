@@ -1,3 +1,5 @@
+#include "common.hlsl"
+
 struct PSOutput
 {
 	float4 position : SV_POSITION;
@@ -8,20 +10,6 @@ struct PSOutput
 	float3 normal : NORMAL;
 	float3 tangentU : TANGENT;
 };
-
-cbuffer cmatrix:register(b1)
-{
-	matrix viewMatrix;
-	matrix perspectiveMatrix;
-	matrix rotatMatrix;
-	matrix shadowTransform;
-	matrix lightOthgraphicMatrix;
-	matrix lightViewMatrix1;
-	matrix lightTransformNDC;
-	matrix invViewMatrix;
-	float4 cameraPos;
-	float4 viewPos;
-}
 
 struct objMaterial
 {

@@ -1,17 +1,4 @@
-cbuffer cmatrix:register(b1)
-{
-	matrix viewMatrix;
-	matrix perspectiveMatrix;
-	matrix rotatMatrix;
-	matrix shadowTransform;
-	matrix lightOthgraphicMatrix;
-	matrix lightViewMatrix1;
-	matrix lightTransformNDC;
-	matrix invViewMatrix;
-	float4 cameraPos;
-	float4 viewPos;
-}
-
+#include "common.hlsl"
 struct PSInput
 {
 	float4 position : POSITION;
@@ -30,13 +17,7 @@ struct PSOutput
 	float2 uv : TEXCOORD;
 	float3 normal : NORMAL;
 	float3 tangentU : TANGENT;
-};
-struct objConst
-{
-	matrix TransMatrix;
-};
-
-StructuredBuffer<objConst> g_objConst : register(t2);
+}; 
 
 PSOutput VSMain(float4 position : POSITION, float4 uv : TEXCOORD, float3 normal : NORMAL, float3 tangentU : TANGENT)
 {

@@ -1,16 +1,4 @@
-cbuffer cmatrix:register(b1)
-{
-	matrix viewMatrix;
-	matrix perspectiveMatrix;
-	matrix rotatMatrix;
-	matrix shadowTransform;
-	matrix lightOthgraphicMatrix;
-	matrix lightViewMatrix1;
-	matrix lightTransformNDC;
-	matrix invViewMatrix;
-	float4 cameraPos;
-	float4 viewPos;
-}
+#include "common.hlsl"
 
 struct PSInput
 {
@@ -24,12 +12,6 @@ struct PSOutput
 {
 	float4 position : SV_POSITION;
 };
-struct objConst
-{
-	matrix TransMatrix;
-};
-
-StructuredBuffer<objConst> g_objConst : register(t2);
 
 static const float4 g_VectorSign[8] =
 {

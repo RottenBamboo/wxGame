@@ -167,5 +167,8 @@
     <FxCompile Include="bounding_box_v.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
+    <FxCompile Include="common.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

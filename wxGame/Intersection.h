@@ -18,12 +18,8 @@ namespace wxGame
 
 	struct BoundingBoxVertexIndex
 	{
-		std::vector<Vertex> Vertex;
-		std::vector<int> Index;
-		BoundingBoxVertexIndex()
-		{
-			Vertex.resize(8);
-		}
+		Vertex Vertex[8];
+		int Index[16];
 	};
 	struct BoundingBox
 	{
@@ -125,7 +121,11 @@ namespace wxGame
 			boundingBox.CornerPosition.Vertex[7].position[2] = boundingBox.Center[2] + boundingBox.Extents[2];
 			boundingBox.CornerPosition.Vertex[7].position[3] = 1;
 
-			boundingBox.CornerPosition.Index = {0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,4};
+			int indexs[16] = { 0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,4 };
+			for (int i = 0; i != 16; i++)
+			{
+				boundingBox.CornerPosition.Index[i] = indexs[i];
+			}
 		}
 
 		void CompulateBoundingSphere(BoundingBox& boundingBox, Vertex& vertex, size_t length)
