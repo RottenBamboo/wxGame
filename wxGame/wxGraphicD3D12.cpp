@@ -16,7 +16,6 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_sunLightBuff(),
 	m_pSunLightDataBegin(nullptr),
 	m_objConst(),
-	m_pObjConstDataBegin(nullptr),
 	m_numIndices(0),
 	angleAxisY(0.f),
 	angleAxisYPerSecond((2 * PI) / 120.f),
@@ -892,6 +891,12 @@ void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 	constBuff.viewPos = m_defaultLookAt;
 	UpdateShadowMatrix();
 	memcpy(m_pCBDataBegin, &constBuff, sizeof(wxConstMatrix));
+
+	BoundingGeometryMgr Manager;
+	for (int i = 0; i != m_vec_objConstStut.size(); i++)
+	{
+		Manager.TransformAABB(m_vec_objConstStut[i].boundingBox, constBuff.rotatMatrix);
+	}
 }
 
 void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
@@ -1051,6 +1056,7 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 							SceneObjectMesh* pMesh = pGeometryObject->GetMesh();
 							size_t elementCount = pMesh->GetVertexCount();
 							Vertex* vertexMix = new Vertex[elementCount];
+							m_pObjConstDataBegin.resize(pMesh->GetVertexPropertiesCount());
 							for (uint32_t i = 0; i < pMesh->GetVertexPropertiesCount(); i++)
 							{
 								const SceneObjectVertexArray& v_property_array = pMesh->GetVertexPropertyArray(i);
@@ -1772,8 +1778,8 @@ void wxGraphicD3D12::CreateObjConst(std::vector<wxObjConst>& objConst)
 			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_vec_objConstRes[i]), (void**)&m_vec_objConstRes[i]);
 
 		D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
-		m_vec_objConstRes[i]->Map(0, &readRange, &m_pObjConstDataBegin);
-		memcpy(m_pObjConstDataBegin, &objConst[i], sizeof(wxObjConst));
+		m_vec_objConstRes[i]->Map(0, &readRange, &m_pObjConstDataBegin[i]);
+		memcpy(m_pObjConstDataBegin[i], &objConst[i], sizeof(wxObjConst));
 
 		// Describe and create a SRV for the texture.
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

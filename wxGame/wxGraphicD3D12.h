@@ -143,7 +143,7 @@ namespace wxGame {
 		wxLight m_sunLightBuff;
 		void* m_pSunLightDataBegin;
 		wxObjConst m_objConst;
-		void* m_pObjConstDataBegin;
+		//void* m_pObjConstDataBegin;
 		Vector4FT m_offsets[14]; 
 
 		// Pipeline objects.
@@ -201,6 +201,7 @@ namespace wxGame {
 		std::vector<wxMaterial> m_vec_matStut;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_objConstRes;
 		std::vector<wxObjConst> m_vec_objConstStut;
+		std::vector<void*> m_pObjConstDataBegin;			//constant buffer data pointer
 		D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvSunLight;
 		std::vector<BoundingBox> m_vec_boundingBox;
 
