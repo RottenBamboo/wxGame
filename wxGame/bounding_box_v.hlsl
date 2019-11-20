@@ -29,7 +29,6 @@ PSOutput VSMain(uint vid : SV_VertexID)
 {
 	PSOutput result = (PSOutput)0.0f;
 	objConst objC = g_objConst[0]; 
-	float4 pos = objC.Box.CornerPosition.Vertex[vid].position;
-	result.position = mul(perspectiveMatrix, mul(viewMatrix, mul(objC.TransMatrix, pos)));
+	result.position = mul(perspectiveMatrix, mul(viewMatrix, objC.Box.CornerPosition.Vertex[vid].position));
 	return result;
 }
