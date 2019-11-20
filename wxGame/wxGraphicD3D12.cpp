@@ -895,7 +895,6 @@ void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 	BoundingGeometryMgr Manager;
 	for (int i = 0; i != m_vec_objConstStut.size(); i++)
 	{
-		VectorMultiMatrix(m_vec_objConstStut[i].boundingBox.CornerPosition.Vertex[i].position, m_vec_objConstStut[i].linearTransMatrix);
 		Manager.TransformAABB(m_vec_objConstStut[i].boundingBox, constBuff.rotatMatrix);
 		memcpy(m_pObjConstDataBegin[i], &m_vec_objConstStut[i], sizeof(wxObjConst));
 	}

@@ -11,8 +11,8 @@ namespace wxGame
 	struct Box
 	{
 	public:
-		Vector3FT Min;
-		Vector3FT Max;
+		Vector4FT Min;
+		Vector4FT Max;
 		Box() :Min(0), Max(0) {};
 	};
 
@@ -23,10 +23,10 @@ namespace wxGame
 	};
 	struct BoundingBox
 	{
-		Vector3FT Center;
-		Vector3FT Extents;
+		Vector4FT Center;
+		Vector4FT Extents;
 		BoundingBoxVertexIndex CornerPosition;
-		BoundingBox(Vector3FT center, Vector3FT radius)
+		BoundingBox(Vector4FT center, Vector4FT radius)
 		{
 			Center = center; Extents = radius;
 		}
@@ -35,13 +35,13 @@ namespace wxGame
 
 	struct BoundingSphere
 	{
-		Vector3FT Center;
+		Vector4FT Center;
 		float Radius;
 	};
 
 	struct BoundingFrustum
 	{
-		Vector3FT Origin;
+		Vector4FT Origin;
 	};
 
 	class BoundingGeometryMgr
@@ -72,10 +72,13 @@ namespace wxGame
 
 		void TransformAABB(BoundingBox& boundingBox, Matrix4X4FT matrix)
 		{
-			for (int i = 0; i != 8; i++)
-			{
-				VectorMultiMatrix(boundingBox.CornerPosition.Vertex[i].position, matrix);
-			}
+			//for (int i = 0; i != 8; i++)
+			//{
+			//	VectorMultiMatrix(boundingBox.CornerPosition.Vertex[i].position, matrix);
+			//}
+			VectorMultiMatrix(boundingBox.Center, matrix);
+			VectorMultiMatrix(boundingBox.Extents, matrix);
+			ComputeBoundingBoxCornerPosition(boundingBox);
 			CompulateBoundingBox(boundingBox, boundingBox.CornerPosition.Vertex[0], 8);
 		}
 

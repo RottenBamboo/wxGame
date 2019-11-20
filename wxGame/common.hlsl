@@ -28,8 +28,8 @@ struct BoundingBoxVertexIndex
 
 struct BoundingBox
 {
-	float3 Center;
-	float3 Extents;
+	float4 Center;
+	float4 Extents;
 	BoundingBoxVertexIndex CornerPosition;
 };
 
