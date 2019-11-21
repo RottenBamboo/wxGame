@@ -22,7 +22,7 @@ struct Vertex
 
 struct BoundingBoxVertexIndex
 {
-	Vertex Vertex[8];
+	Vertex Vertex[16];
 	int Index[16];
 };
 

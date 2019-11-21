@@ -18,7 +18,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_objConst(),
 	m_numIndices(0),
 	angleAxisY(0.f),
-	angleAxisYPerSecond((2 * PI) / 120.f),
+	angleAxisYPerSecond((2 * PI) / 12000.f),
 	mSunAngleAxisY(0.f),
 	mSunAngleAxisYPerSec(0.5f),
 	m_frameIndex(0),
@@ -821,7 +821,7 @@ void wxGraphicD3D12::PopulateCommandList()
 	{
 		//m_commandList->IASetVertexBuffers(0, 1, &(m_vec_boundingBoxVertexBufferView[i]));
 		//m_commandList->IASetIndexBuffer(&m_vec_boundingBoxIndexBufferView[i]);
-		m_commandList->DrawInstanced(8, 1, 0, 0);
+		m_commandList->DrawInstanced(16, 1, 0, 0);
 	}
 
 	// Record commands.
