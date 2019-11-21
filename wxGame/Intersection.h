@@ -70,16 +70,38 @@ namespace wxGame
 			ComputeBoundingBoxCornerPosition(boundingBox);
 		}
 
+		void ComputeBoundingBoxCornerPositionByVertex(BoundingBox& boundingBox, Vertex& vertex, size_t length)
+		{
+			Vertex* curr_vertex = &vertex;
+			Box AABB;
+			AABB.Min[0] = curr_vertex->position[0];
+			AABB.Min[1] = curr_vertex->position[1];
+			AABB.Min[2] = curr_vertex->position[2];
+			AABB.Max = AABB.Min;
+			int i = 0;
+			for (; i < length; i++)
+			{
+				AABB.Min[0] = MATH_MIN(curr_vertex[i].position[0], AABB.Min[0]);
+				AABB.Min[1] = MATH_MIN(curr_vertex[i].position[1], AABB.Min[1]);
+				AABB.Min[2] = MATH_MIN(curr_vertex[i].position[2], AABB.Min[2]);
+				AABB.Max[0] = MATH_MAX(curr_vertex[i].position[0], AABB.Max[0]);
+				AABB.Max[1] = MATH_MAX(curr_vertex[i].position[1], AABB.Max[1]);
+				AABB.Max[2] = MATH_MAX(curr_vertex[i].position[2], AABB.Max[2]);
+			}
+			BoundingBox box;
+			box.Center = AABB.Min + (AABB.Max - AABB.Min) / 2;
+			box.Extents = (AABB.Max - AABB.Min) / 2;
+			ComputeBoundingBoxCornerPosition(box);
+			boundingBox.CornerPosition = box.CornerPosition;
+		}
+
 		void TransformAABB(BoundingBox& boundingBox, Matrix4X4FT matrix)
 		{
-			//for (int i = 0; i != 8; i++)
-			//{
-			//	VectorMultiMatrix(boundingBox.CornerPosition.Vertex[i].position, matrix);
-			//}
+			BoundingBox box = boundingBox;
 			VectorMultiMatrix(boundingBox.Center, matrix);
 			VectorMultiMatrix(boundingBox.Extents, matrix);
-			ComputeBoundingBoxCornerPosition(boundingBox);
-			CompulateBoundingBox(boundingBox, boundingBox.CornerPosition.Vertex[0], 8);
+			ComputeBoundingBoxCornerPositionByVertex(box, box.CornerPosition.Vertex[0], 8);
+			boundingBox.CornerPosition = box.CornerPosition;
 		}
 
 		void ComputeBoundingBoxCornerPosition(BoundingBox& boundingBox)

@@ -32,7 +32,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_rtvDescriptorSize(0),
 	m_cameraMoveBaseSpeed(0.05f),
 	m_cameraRotationSpeed(0.015f),
-	m_defaultCameraPosition({ 0.f,10.f,10.f,1.f }),
+	m_defaultCameraPosition({ 0.f,20.f,20.f,1.f }),
 	m_defaultLookAt({ 0.0f,0.f,0.f,1.0f}),
 	m_defaultUp({ 0.f,1.f,0.f,0.f }),
 	cameraDistance({ 0.f,0.f,0.f,1.f })
@@ -2018,24 +2018,6 @@ void wxGraphicD3D12::CheckControllerInput(wxTimer* timer)
 					m_defaultLookAt += cameraDistance;
 					m_defaultCameraPosition += cameraDistance;
 				}
-				////check if the controller is outside a circular dead zone
-				//if (magnitude > GAMEPAD_LEFT_THUMB_DEADZONE)
-				//{
-				//	//clip the magnitude at its expected maximum value
-				//	if (magnitude > 32767) magnitude = 32767;
-
-				//	//adjust magnitude relative to the end of the dead zone
-				//	magnitude -= GAMEPAD_LEFT_THUMB_DEADZONE;
-
-				//	//optionally normalize the magnitude with respect to its expected range
-				//	//giving a magnitude value of 0.0 to 1.0
-				//	normalizedMagnitude = magnitude / (32767 - GAMEPAD_LEFT_THUMB_DEADZONE);
-				//}
-				//else //if the controller is in the deadzone zero out the magnitude
-				//{
-				//	magnitude = 0.0;
-				//	normalizedMagnitude = 0.0;
-				//}
 				constBuff.viewMatrix = BuildViewMatrix(m_defaultCameraPosition, m_defaultLookAt, { 0.f,1.f,0.f });
 			}
 		}
