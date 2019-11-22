@@ -18,7 +18,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_objConst(),
 	m_numIndices(0),
 	angleAxisY(0.f),
-	angleAxisYPerSecond((2 * PI) / 12000.f),
+	angleAxisYPerSecond((2 * PI) / 120.f),
 	mSunAngleAxisY(0.f),
 	mSunAngleAxisYPerSec(0.5f),
 	m_frameIndex(0),
@@ -32,7 +32,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_rtvDescriptorSize(0),
 	m_cameraMoveBaseSpeed(0.05f),
 	m_cameraRotationSpeed(0.015f),
-	m_defaultCameraPosition({ 0.f,20.f,20.f,1.f }),
+	m_defaultCameraPosition({ 0.f,30.f,30.f,1.f }),
 	m_defaultLookAt({ 0.0f,0.f,0.f,1.0f}),
 	m_defaultUp({ 0.f,1.f,0.f,0.f }),
 	cameraDistance({ 0.f,0.f,0.f,1.f })
@@ -895,7 +895,9 @@ void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 	BoundingGeometryMgr Manager;
 	for (int i = 0; i != m_vec_objConstStut.size(); i++)
 	{
-		Manager.TransformAABB(m_vec_objConstStut[i].boundingBox, constBuff.rotatMatrix);
+		//calculate transform matrix by rotation matrix multiply linear transformation matrix
+		Matrix4X4FT transformMatrix = MatrixMultiMatrix(m_vec_objConstStut[i].linearTransMatrix, constBuff.rotatMatrix);
+		Manager.TransformAABB(m_vec_objConstStut[i].boundingBox, transformMatrix);
 		memcpy(m_pObjConstDataBegin[i], &m_vec_objConstStut[i], sizeof(wxObjConst));
 	}
 }
@@ -1109,13 +1111,17 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 
 							BoundingGeometryMgr BoxMgr;
 							BoundingBox box;
-							BoxMgr.CompulateBoundingBox(box, *vertexMix, elementCount);
+							BoxMgr.CalculateBoundingBoxByVertex(box, *vertexMix, elementCount);
 
 							SceneObjectTransform* transform = geoNode->GetTransform(0);
 							wxObjConst objConst;
 							if (transform)
 							{
 								objConst.linearTransMatrix = *(transform->GetTransformMatrix());
+								//bounding box corner position need to multiply transform matrix right after vertexs be loaded, 
+								//because we rotate bounding box corner position after tranforming, so we won't muliply transform 
+								//matrix in vertex shader but multiply that matrix right here for the right multiplication sequence.
+								BoxMgr.TransformBoundingBoxCornerPosition(box, objConst.linearTransMatrix);
 								objConst.boundingBox = box;
 								m_vec_objConstRes.push_back(ComPtr<ID3D12Resource>());
 								m_vec_objConstStut.push_back(objConst);
