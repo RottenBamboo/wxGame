@@ -18,8 +18,7 @@ namespace wxGame
 
 	struct BoundingBoxVertexIndex
 	{
-		Vertex Vertex[16];
-		int Index[16];
+		Vertex Vertex[24];
 	};
 	struct BoundingBox
 	{
@@ -79,7 +78,7 @@ namespace wxGame
 			AABB.Min[2] = curr_vertex->position[2];
 			AABB.Max = AABB.Min;
 			int i = 0;
-			for (; i < 16; i++)
+			for (; i < 24; i++)
 			{
 				AABB.Min[0] = MATH_MIN(curr_vertex[i].position[0], AABB.Min[0]);
 				AABB.Min[1] = MATH_MIN(curr_vertex[i].position[1], AABB.Min[1]);
@@ -108,7 +107,7 @@ namespace wxGame
 		void TransformBoundingBoxCornerPosition(BoundingBox& boundingBox, Matrix4X4FT& Matrix)
 		{
 			int i = 0;
-			for (; i < 16; i++)
+			for (; i < 24; i++)
 			{
 				VectorMultiMatrix(boundingBox.CornerPosition.Vertex[i].position, Matrix);
 			}
@@ -197,11 +196,25 @@ namespace wxGame
 		//4
 			boundingBox.CornerPosition.Vertex[15] = seqVertex[4];
 
-			int indexs[16] = { 0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,4 };
-			for (int i = 0; i != 16; i++)
-			{
-				boundingBox.CornerPosition.Index[i] = indexs[i];
-			}
+		//0
+			boundingBox.CornerPosition.Vertex[16] = seqVertex[0];
+		//4
+			boundingBox.CornerPosition.Vertex[17] = seqVertex[4];
+
+		//1
+			boundingBox.CornerPosition.Vertex[18] = seqVertex[1];
+		//5
+			boundingBox.CornerPosition.Vertex[19] = seqVertex[5];
+
+		//2
+			boundingBox.CornerPosition.Vertex[20] = seqVertex[2];
+		//6
+			boundingBox.CornerPosition.Vertex[21] = seqVertex[6];
+
+		//3
+			boundingBox.CornerPosition.Vertex[22] = seqVertex[3];
+		//7
+			boundingBox.CornerPosition.Vertex[23] = seqVertex[7];
 		}
 
 		void  CalculateBoundingSphere(BoundingBox& boundingBox, Vertex& vertex, size_t length)
