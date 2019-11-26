@@ -104,7 +104,7 @@ namespace Mathmatic
 	typedef Vector<2, float> Vector2FT;
 	typedef Vector<3, float> Vector3FT;
 	typedef Vector<4, float> Vector4FT;
-	typedef Vector<4, float> Quaternion;
+	typedef Vector<4, float> Quaternion4FT;
 
 	template <template<int, typename> class TT = Vector, int count, typename T>
 	TT<count, T> operator+(const TT<count, T>& vec1, const TT<count, T>& vec2)
@@ -677,13 +677,13 @@ namespace Mathmatic
 	}
 
 	template<template<int, int, typename> class TT = Matrix>
-	Matrix4X4FT MatrixRotationQuaternion(Quaternion q)
+	Matrix4X4FT MatrixRotationQuaternion(Quaternion4FT q)
 	{
-		float x = q.element[0], y = q.element[0], z = q.element[0], w = q.element[3];
-		float tempElem[] = { 1.0f - 2.0f * y * y - 2.0f * z * z, 2.0f * x * y + 2.0f * w * z, 2.0f * x * z - 2.0f * w * y, 0.0f,
-			2.0f * x * y - 2.0f * w * z, 1.0f - 2.0f * x * x - 2.0f * z * z, 2.0f * y * z + 2.0f * w * x, 0.0f,
-			2.0f * x * z + 2.0f * w * y, 2.0f * y * z - 2.0f * y * z - 2.0f * w * x, 1.0f - 2.0f * x * x - 2.0f * y * y, 0.0f,
-			0.0f,   0.0f,   0.0f,   1.0f };
+		float x = q.element[0], y = q.element[1], z = q.element[2], w = q.element[3];
+		float tempElem[] = { 1.0f - 2.0f * y * y - 2.0f * z * z,	2.0f * x * y + 2.0f * w * z,				2.0f * x * z - 2.0f * w * y,		0.0f,
+							 2.0f * x * y - 2.0f * w * z,			1.0f - 2.0f * x * x - 2.0f * z * z,			2.0f * y * z + 2.0f * w * x,		0.0f,
+							 2.0f * x * z + 2.0f * w * y,			2.0f * y * z - 2.0f * y * z - 2.0f * w * x, 1.0f - 2.0f * x * x - 2.0f * y * y, 0.0f,
+							 0.0f,									0.0f,										0.0f,								1.0f };
 
 		Matrix4X4FT result(16, tempElem);
 		return result;
