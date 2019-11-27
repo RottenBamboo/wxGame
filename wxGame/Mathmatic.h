@@ -105,6 +105,7 @@ namespace Mathmatic
 	typedef Vector<3, float> Vector3FT;
 	typedef Vector<4, float> Vector4FT;
 	typedef Vector<4, float> Quaternion4FT;
+	typedef Vector<4, float> Plane4FT;
 
 	template <template<int, typename> class TT = Vector, int count, typename T>
 	TT<count, T> operator+(const TT<count, T>& vec1, const TT<count, T>& vec2)
