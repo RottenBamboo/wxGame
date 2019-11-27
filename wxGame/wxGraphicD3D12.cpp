@@ -839,6 +839,7 @@ void wxGraphicD3D12::OnUpdate(wxTimer *timer)
 	UpdateSunLight(timer);
 	UpdateConstantBuffer(timer);
 	UpdateSSAO(timer);
+	UpdateFrustumCulling(timer);
 	CheckControllerInput(timer);
 }
 
@@ -973,6 +974,16 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	UpdateBlurWidget();
 
 	memcpy(m_pCBSSAOBegin, &m_constSSAOBuff, sizeof(wxSSAOConstant));
+}
+
+void wxGame::wxGraphicD3D12::UpdateFrustumCulling(wxTimer* timer)
+{
+	Vector4FT CurrFrustumCornerVertex[8];
+	Matrix4X4FT currInvMatrix = MatrixInverse(constBuff.perspectiveMatrix);
+	for (int i = 0; i < 8; i++)
+	{
+		VectorMultiMatrix(CurrFrustumCornerVertex[i], FrustumCornerVertex[i], currInvMatrix);
+	}
 }
 
 void wxGame::wxGraphicD3D12::UpdateBlurWidget()

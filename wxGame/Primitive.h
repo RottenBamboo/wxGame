@@ -18,4 +18,15 @@ namespace wxGame
 		Plane4FT plane_far;
 		Plane4FT plane_near;
 	};
+	static Vector4FT FrustumCornerVertex[8] =
+	{
+		{-1.f,1.f,1.f,1.f},		//far plane left up corner
+		{-1.f,-1.f,1.f,1.f},	//far plane left down corner
+		{1.f,1.f,1.f,1.f},		//far plane right up corner
+		{1.f,-1.f,1.f,1.f},		//far plane right down corner
+		{-1.f,1.f,-1.f,1.f},	//near plane left up corner
+		{-1.f,-1.f,-1.f,1.f},	//near plane left down corner
+		{1.f,1.f,-1.f,1.f},		//near plane right up corner
+		{1.f,-1.f,-1.f,1.f},	//near plane right down corner
+	};
 }

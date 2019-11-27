@@ -448,6 +448,17 @@ namespace Mathmatic
 	}
 
 	template<template<int, int, typename> class TT = Matrix, int rows, int cols, typename T>
+	void VectorMultiMatrix(Vector<rows, T>& returnVec, Vector<rows, T>& vec, const Matrix<rows, cols, T>& mat)
+	{
+		Vector<cols, T> result;
+		for (int itr = 0; itr != cols; itr++)
+		{
+			result.element[itr] = DotProduct(vec, mat.GetCol(itr));
+		}
+		returnVec = result;
+	}
+
+	template<template<int, int, typename> class TT = Matrix, int rows, int cols, typename T>
 	Matrix<cols, rows, T> MatrixTranspose(const Matrix<rows, cols, T>& mat)
 	{
 		Matrix<rows, cols, T> result;

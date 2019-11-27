@@ -253,6 +253,7 @@ namespace wxGame {
 		void BuildOffsetVectors();
 		void UpdateSunLight(wxTimer *timer);
 		void UpdateSSAO(wxTimer *timer);
+		void UpdateFrustumCulling(wxTimer* timer);
 		void UpdateBlurWidget();
 		std::vector<Vector4FT> CalcGaussWeights(float sigma);
 
