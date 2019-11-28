@@ -985,29 +985,33 @@ void wxGame::wxGraphicD3D12::UpdateFrustumCulling(wxTimer* timer)
 		VectorMultiMatrix(viewCornerPosition[i], MatrixInverse(constBuff.viewMatrix));//vertex position in world space
 	}
 	//calculate plane by three points in this plane
-	m_frustum.plane_top = GetPlaneVector(viewCornerPosition[0], viewCornerPosition[2], viewCornerPosition[4]);
-	m_frustum.plane_far = GetPlaneVector(viewCornerPosition[0], viewCornerPosition[1], viewCornerPosition[2]);
-	m_frustum.plane_left = GetPlaneVector(viewCornerPosition[0], viewCornerPosition[1], viewCornerPosition[4]);
-	m_frustum.plane_near = GetPlaneVector(viewCornerPosition[4], viewCornerPosition[5], viewCornerPosition[6]);
-	m_frustum.plane_right = GetPlaneVector(viewCornerPosition[2], viewCornerPosition[3], viewCornerPosition[6]);
-	m_frustum.plane_bottom = GetPlaneVector(viewCornerPosition[1], viewCornerPosition[3], viewCornerPosition[5]);
+	//left hand coordinate, we must make these points position in anticlockwise sequence to calculate correct vectors.
+	m_frustum.plane_top = GetPlaneVector(viewCornerPosition[6], viewCornerPosition[2], viewCornerPosition[0]); 
+	m_frustum.plane_far = GetPlaneVector(viewCornerPosition[0], viewCornerPosition[2], viewCornerPosition[3]);
+	m_frustum.plane_left = GetPlaneVector(viewCornerPosition[5], viewCornerPosition[4], viewCornerPosition[1]);
+	m_frustum.plane_near = GetPlaneVector(viewCornerPosition[5], viewCornerPosition[7], viewCornerPosition[6]);
+	m_frustum.plane_right = GetPlaneVector(viewCornerPosition[3], viewCornerPosition[2], viewCornerPosition[6]);
+	m_frustum.plane_bottom = GetPlaneVector(viewCornerPosition[1], viewCornerPosition[3], viewCornerPosition[7]);
 
 	//If object's bounding box intersect the frustum or not.
 	for (int i = 0; i != m_vec_objConstStut.size(); i++)
 	{
 		const Vector4FT* p4ft = &m_frustum.plane_top;
 		bool IsInFrustum = true;
-		for (int i = 0; i != sizeof(m_frustum) / sizeof(Plane4FT); i++)
+		for (int k = 0; k != sizeof(m_frustum) / sizeof(m_frustum.plane_top); k++)
 		{
-			Vector4FT diagonalMinPoint, diagonalMaxPoint;//max or min point is relative to the plane normal vector
-			Vector3FT finalExtents; finalExtents[4] = 1;
+			Vector4FT diagonalMinPoint(0), diagonalMaxPoint(0);//max or min point is relative to the plane normal vector
+			diagonalMinPoint[3] = 1; diagonalMaxPoint[3] = 1;
+			Vector3FT finalExtents(0);
 			for (int j = 0; j != 3; j++)
 			{
 				//sign of normal vector of this plane.
 				//boundingbox diagonal should be the same direction about normal vector.
-				if ((m_vec_objConstStut[i].boundingBox.Extents[j] > 0.f) ^ (p4ft->element[j] > 0.f))
+				finalExtents[j] = m_vec_objConstStut[i].boundingBox.Extents[j];
+
+				if ((m_vec_objConstStut[i].boundingBox.Extents.element[j] > 0.f) ^ (p4ft->element[j] > 0.f))
 				{
-					finalExtents[j] = -m_vec_objConstStut[i].boundingBox.Extents[j];
+					finalExtents[j] = -finalExtents[j];
 				}
 
 				//find max and min diagonal point
@@ -1026,8 +1030,11 @@ void wxGame::wxGraphicD3D12::UpdateFrustumCulling(wxTimer* timer)
 
 bool wxGame::wxGraphicD3D12::IsFrontPlane(const Vector4FT*& plane, const Vector4FT& maxPoint, const Vector4FT& minPoint)
 {
-	if (DotProduct(*plane, minPoint) >= 0.f && DotProduct(*plane, maxPoint) >= 0.f)
+	if (DotProduct(*plane, minPoint) >= 0.f || DotProduct(*plane, maxPoint) >= 0.f)
+	{
 		return true;
+	}
+	return false;
 }
 
 void wxGame::wxGraphicD3D12::UpdateBlurWidget()
@@ -1176,7 +1183,7 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 								//bounding box corner position need to multiply transform matrix right after vertexs be loaded, 
 								//because we rotate bounding box corner position after tranforming, so we won't muliply transform 
 								//matrix in vertex shader but multiply that matrix right here for the right multiplication sequence.
-								BoxMgr.TransformBoundingBoxCornerPosition(box, objConst.linearTransMatrix);
+								BoxMgr.TransformBoundingBoxCornerPosition(box, objConst.linearTransMatrix); //boundingbox no change, only changed corner position.
 								objConst.boundingBox = box;
 								m_vec_objConstRes.push_back(ComPtr<ID3D12Resource>());
 								m_vec_objConstStut.push_back(objConst);

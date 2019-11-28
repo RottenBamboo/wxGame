@@ -704,8 +704,8 @@ namespace Mathmatic
 	template <template<int, typename> class TT = Vector>
 	Plane4FT GetPlaneVector(Vector4FT& vec1, Vector4FT& vec2, Vector4FT& vec3)
 	{
-		Vector4FT vec = vectorNormalize(vectorCrossProduct(vec1 - vec2, vec3 - vec2));
-		vec[4] = -DotProduct(vec, vec1);
+		Vector4FT vec = vectorNormalize(vectorCrossProduct(vec2 - vec1, vec3 - vec2));
+		vec[3] = -DotProduct(vec, vec1);
 		return vec;
 	}
 
