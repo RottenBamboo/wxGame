@@ -701,6 +701,14 @@ namespace Mathmatic
 		return result;
 	}
 
+	template <template<int, typename> class TT = Vector>
+	Plane4FT GetPlaneVector(Vector4FT& vec1, Vector4FT& vec2, Vector4FT& vec3)
+	{
+		Vector4FT vec = vectorNormalize(vectorCrossProduct(vec1 - vec2, vec3 - vec2));
+		vec[4] = -DotProduct(vec, vec1);
+		return vec;
+	}
+
 	template<template<int, int, typename> class TT = Matrix>
 	Matrix4X4FT BuildViewMatrix(const Vector4FT position, const Vector4FT lookAt, const Vector4FT up)
 	{

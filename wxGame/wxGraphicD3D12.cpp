@@ -978,12 +978,56 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 
 void wxGame::wxGraphicD3D12::UpdateFrustumCulling(wxTimer* timer)
 {
-	Vector4FT CurrFrustumCornerVertex[8];
-	Matrix4X4FT currInvMatrix = MatrixInverse(constBuff.perspectiveMatrix);
+	Vector4FT viewCornerPosition[8];
 	for (int i = 0; i < 8; i++)
 	{
-		VectorMultiMatrix(CurrFrustumCornerVertex[i], FrustumCornerVertex[i], currInvMatrix);
+		VectorMultiMatrix(viewCornerPosition[i], FrustumCornerVertex[i], constBuff.invProjMatrix);//vertex position in view space
+		VectorMultiMatrix(viewCornerPosition[i], MatrixInverse(constBuff.viewMatrix));//vertex position in world space
 	}
+	//calculate plane by three points in this plane
+	m_frustum.plane_top = GetPlaneVector(viewCornerPosition[0], viewCornerPosition[2], viewCornerPosition[4]);
+	m_frustum.plane_far = GetPlaneVector(viewCornerPosition[0], viewCornerPosition[1], viewCornerPosition[2]);
+	m_frustum.plane_left = GetPlaneVector(viewCornerPosition[0], viewCornerPosition[1], viewCornerPosition[4]);
+	m_frustum.plane_near = GetPlaneVector(viewCornerPosition[4], viewCornerPosition[5], viewCornerPosition[6]);
+	m_frustum.plane_right = GetPlaneVector(viewCornerPosition[2], viewCornerPosition[3], viewCornerPosition[6]);
+	m_frustum.plane_bottom = GetPlaneVector(viewCornerPosition[1], viewCornerPosition[3], viewCornerPosition[5]);
+
+	//If object's bounding box intersect the frustum or not.
+	for (int i = 0; i != m_vec_objConstStut.size(); i++)
+	{
+		const Vector4FT* p4ft = &m_frustum.plane_top;
+		bool IsInFrustum = true;
+		for (int i = 0; i != sizeof(m_frustum) / sizeof(Plane4FT); i++)
+		{
+			Vector4FT diagonalMinPoint, diagonalMaxPoint;//max or min point is relative to the plane normal vector
+			Vector3FT finalExtents; finalExtents[4] = 1;
+			for (int j = 0; j != 3; j++)
+			{
+				//sign of normal vector of this plane.
+				//boundingbox diagonal should be the same direction about normal vector.
+				if ((m_vec_objConstStut[i].boundingBox.Extents[j] > 0.f) ^ (p4ft->element[j] > 0.f))
+				{
+					finalExtents[j] = -m_vec_objConstStut[i].boundingBox.Extents[j];
+				}
+
+				//find max and min diagonal point
+				diagonalMaxPoint[j] = m_vec_objConstStut[i].boundingBox.Center[j] + finalExtents[j];
+				diagonalMinPoint[j] = m_vec_objConstStut[i].boundingBox.Center[j] - finalExtents[j];
+			}
+			
+			if (!IsFrontPlane(p4ft, diagonalMaxPoint, diagonalMinPoint))
+			{
+				IsInFrustum = false;
+			}
+			p4ft++;
+		}
+	}
+}
+
+bool wxGame::wxGraphicD3D12::IsFrontPlane(const Vector4FT*& plane, const Vector4FT& maxPoint, const Vector4FT& minPoint)
+{
+	if (DotProduct(*plane, minPoint) >= 0.f && DotProduct(*plane, maxPoint) >= 0.f)
+		return true;
 }
 
 void wxGame::wxGraphicD3D12::UpdateBlurWidget()

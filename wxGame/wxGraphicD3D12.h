@@ -145,6 +145,7 @@ namespace wxGame {
 		wxObjConst m_objConst;
 		//void* m_pObjConstDataBegin;
 		Vector4FT m_offsets[14]; 
+		ViewFrustum m_frustum;
 
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
@@ -251,6 +252,7 @@ namespace wxGame {
 		void GenerateAmbientMap();
 		void GenerateRandomVectorTexture();
 		void BuildOffsetVectors();
+		bool IsFrontPlane(const Vector4FT*&, const Vector4FT&, const Vector4FT&);
 		void UpdateSunLight(wxTimer *timer);
 		void UpdateSSAO(wxTimer *timer);
 		void UpdateFrustumCulling(wxTimer* timer);
