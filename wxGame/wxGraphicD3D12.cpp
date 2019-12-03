@@ -144,7 +144,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
+		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT + CUBE_MAP_TEXTURE_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//TransformMatrix(geometry count), light matrix, world related matrix.
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;																	
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -1659,7 +1659,6 @@ void wxGame::wxGraphicD3D12::BuildOffsetVectors()
 void wxGraphicD3D12::CreateTexture(std::vector<std::string>& title)
 {
 	BMPDecoder bmpDecoder;
-	DataBuffer dataBuffer;
 	ImageCommon imgCommon;
 	HRESULT hr;
 	m_vec_texture.resize(title.size());
@@ -1961,6 +1960,109 @@ void wxGame::wxGraphicD3D12::CreateSSAOBuffer()
 	constantBufferView.BufferLocation = m_ssaoBuffer->GetGPUVirtualAddress();
 	constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxSSAOConstant));
 	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
+}
+
+void wxGame::wxGraphicD3D12::CreateCubeTexture(std::string& name)
+{
+	BMPDecoder bmpDecoder;
+	ImageCommon imgCommon[5];
+	HRESULT hr;
+
+	for (int i = 0; i != 6; i++)
+	{
+		std::string textureName = name + "_" + std::to_string(i);
+		bmpDecoder.BMPLoader((ASSET_DIRECTORY + textureName).c_str());
+		bmpDecoder.BMPParser(imgCommon[i]);
+	}
+
+	// Describe and create a Texture2D.
+	D3D12_RESOURCE_DESC textureDesc = {};
+	textureDesc.MipLevels = 1;
+	textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	textureDesc.Width = imgCommon[0].imWidth;
+	textureDesc.Height = imgCommon[0].imHeight;
+	textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	textureDesc.DepthOrArraySize = 6;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.SampleDesc.Quality = 0;
+	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+	hr = m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&textureDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&(CubeMapTexture)));
+
+	UINT64 uploadBufferSize = 0;
+	if (imgCommon[0].imWidth != 0 && imgCommon[0].imHeight != 0)
+	{
+		uploadBufferSize = GetRequiredIntermediateSize(CubeMapTexture, 0, 1);
+	}
+
+	// Create the GPU upload buffer.
+	hr = m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&(CubeMapTexture_UploadHep)));
+
+	D3D12_SUBRESOURCE_DATA srvSubrecData[6] = {};
+	for (int i = 0; i != 6; i++)
+	{
+		// Copy data to the intermediate upload heap and then schedule a copy 
+		// from the upload heap to the Texture2D.
+
+		if (imgCommon[i].imBitCount == 24)
+		{
+			// DXGI does not support 24bit formats so we have to extend it to 32bit
+			unsigned char new_pitch = imgCommon[i].imPitch / 3 * 4;
+			size_t data_size = new_pitch * imgCommon[i].imHeight;
+			DataBuffer* data = new DataBuffer(data_size);
+			unsigned char* buf = reinterpret_cast<unsigned char*>(data->GetData());
+			unsigned char* src = reinterpret_cast<unsigned char*>(imgCommon[i].imData);
+			for (uint32_t row = 0; row < imgCommon[i].imHeight; row++)
+			{
+				buf = reinterpret_cast<unsigned char*>(data->GetData()) + row * new_pitch;
+				src = reinterpret_cast<unsigned char*>(imgCommon[i].imData) + row * imgCommon[i].imPitch;
+				for (unsigned char col = 0; col < imgCommon[i].imWidth; col++)
+				{
+					*(unsigned char*)buf = *(unsigned char*)src;
+					buf[3] = 0;  // set alpha to 0
+					buf += 4;
+					src += 3;
+				}
+			}
+			imgCommon[i].imData = data->GetData();
+			imgCommon[i].imDataSize = data_size;
+			imgCommon[i].imPitch = new_pitch;
+		}
+		int sizeData = sizeof(imgCommon[i].imData);
+		srvSubrecData[i].pData = imgCommon[i].imData;
+		srvSubrecData[i].RowPitch = imgCommon[i].imPitch;
+		srvSubrecData[i].SlicePitch = imgCommon[i].imPitch * imgCommon[i].imHeight;
+	}
+
+	if (imgCommon[0].imWidth != 0 && imgCommon[0].imHeight != 0)
+	{
+		UpdateSubresources(m_commandList.Get(), CubeMapTexture, CubeMapTexture_UploadHep, 0, 0, 6, &srvSubrecData[0]);
+	}
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CubeMapTexture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE srvStart = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	srvStart.ptr += GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT;
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+	srvDesc.TextureCube.MipLevels = 1;
+	srvDesc.TextureCube.MostDetailedMip = 0.f;
+	srvDesc.TextureCube.ResourceMinLODClamp = 0.f;
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	m_device->CreateShaderResourceView(CubeMapTexture, &srvDesc, srvStart);
 }
 
 void wxGraphicD3D12::CreateSunLightBuffer()

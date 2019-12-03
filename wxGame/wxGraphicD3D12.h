@@ -14,6 +14,7 @@
 #define DEFAULT_DSV_MAP_COUNT (int)1
 #define SHADOW_DSV_MAP_COUNT (int)1
 #define CAMERA_DSV_MAP_COUNT (int)1
+#define CUBE_MAP_TEXTURE_COUNT (int)1
 #define CONSTANTMATRIX_COUNT (int)1
 #define SHADOW_CONSTANTMATRIX_COUNT (int)1
 #define RANDOM_VECTOR_MAP_COUNT (int)1
@@ -183,6 +184,8 @@ namespace wxGame {
 		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_boundingBoxIndexBufferView;
 
 		std::vector<ID3D12Resource*> m_vec_texture;
+		ID3D12Resource* CubeMapTexture;
+		ID3D12Resource* CubeMapTexture_UploadHep;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
 
 		ComPtr<ID3D12Resource> m_shadowDepthMap;
@@ -234,6 +237,7 @@ namespace wxGame {
 		void CreateObjConst(std::vector<wxObjConst>&);
 		void CreateConstantMatrix();
 		void CreateSSAOBuffer();
+		void CreateCubeTexture(std::string&);
 		void PopulateCommandList();
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
