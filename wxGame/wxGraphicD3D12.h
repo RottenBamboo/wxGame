@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GraphicD3D12.h"
-#include "Mathmatic.h"
 #include "FileLoader.h"
 #include "BMPDecoder.h"
 #include "SceneObject.h"

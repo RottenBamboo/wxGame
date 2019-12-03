@@ -1,4 +1,7 @@
 #pragma once
+#include "Mathmatic.h"
+using namespace Mathmatic;
+
 namespace wxGame
 {
 	struct Vertex
