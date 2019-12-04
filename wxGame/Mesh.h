@@ -35,5 +35,6 @@ namespace wxGame {
 	{
 	public:
 		MeshInfo GenerateCylinder(float bottomRadius, float topRadius, float height, unsigned int sliceCount, unsigned int stackCount);
+		MeshInfo GenerateSphere(float radius, unsigned int sliceCount, unsigned int stackCount);
 	};
 }
