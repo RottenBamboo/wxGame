@@ -1,4 +1,8 @@
 #pragma once
+#include "stdafx.h"
+#include "Primitive.h"
+
+using namespace wxGame;
 
 namespace wxGame {
 	typedef enum _PrimitiveType {
@@ -20,4 +24,16 @@ namespace wxGame {
 		kPrimitiveTypeQuadStrip = 0x00000014,
 		kPrimitiveTypePolygon = 0x00000015,
 	} PrimitiveType;
+
+	struct MeshInfo
+	{
+		std::vector<Vertex> vec_vertices;
+		std::vector<unsigned int> vec_indices;
+	};
+
+	class SimpleGeometryGenerator
+	{
+	public:
+		MeshInfo GenerateCylinder(float bottomRadius, float topRadius, float height, unsigned int sliceCount, unsigned int stackCount);
+	};
 }
