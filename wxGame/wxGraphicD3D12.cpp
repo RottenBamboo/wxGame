@@ -189,7 +189,18 @@ void wxGraphicD3D12::LoadAssets()
 
 	m_TypedDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	m_DepthStencilDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-
+	CreateCubeTexture(cubetexture);
+	//m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateSphere(0.01f, 10, 10));
+	m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateCylinder(3.f,1.f,3.f, 10, 10));
+	for (int i = 0; i != m_vec_MeshSkySphere.size(); i++)
+	{
+		CreateVertexBuffer(m_vec_GeoVertexBufferView, m_vec_MeshSkySphere[i].vec_vertices[0], m_vec_MeshSkySphere[i].vec_vertices.size());
+		CreateIndexBuffer(m_vec_GeoIndexBufferView, m_vec_MeshSkySphere[i].vec_indices[0], m_vec_MeshSkySphere[i].vec_vertices.size());
+		m_vec_GeoObjConstStut.push_back(wxObjConst());
+	}
+	m_vec_GetObjConstRes.resize(m_vec_GeoObjConstStut.size()); 
+	m_pGeoObjConstDataBegin.resize(m_vec_GeoObjConstStut.size());
+	CreateObjConst(m_vec_GeoObjConstStut, m_vec_GetObjConstRes, m_pGeoObjConstDataBegin);
 	CreateTexture(m_vec_TextureTitle);
 	ParserDataFromScene(m_vec_AssetFileTitle);
 	//resource Description for depth stencil buffer
@@ -815,6 +826,14 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
+	//draw simple geometry
+	for (int i = 0; i < m_vec_MeshSkySphere.size(); i++)
+	{
+		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_GeoVertexBufferView[i]));
+		m_commandList->IASetIndexBuffer(&m_vec_GeoIndexBufferView[i]); 
+		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_GetObjConstRes[i]->GetGPUVirtualAddress());	//transform matrix
+		m_commandList->DrawIndexedInstanced(m_vec_MeshSkySphere[i].vec_indices.size(), 1, 0, 0, 0);
+	}
 	m_commandList->SetPipelineState(m_boundingBoxPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
@@ -886,7 +905,7 @@ void wxGraphicD3D12::WaitForPreviousFrame()
 
 void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 {
-	angleAxisY += angleAxisYPerSecond * timer->DeltaTime();
+	//angleAxisY += angleAxisYPerSecond * timer->DeltaTime();
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.cameraPos = m_defaultCameraPosition;
 	constBuff.viewPos = m_defaultLookAt;
@@ -1229,7 +1248,8 @@ void wxGraphicD3D12::ParserDataFromScene(std::vector<std::string>& title)
 	}
 
 	m_pObjConstDataBegin.resize(m_vec_objConstStut.size());
-	CreateObjConst(m_vec_objConstStut);
+	m_vec_objConstRes.resize(m_vec_objConstStut.size());
+	CreateObjConst(m_vec_objConstStut, m_vec_objConstRes, m_pObjConstDataBegin);
 	CreateConstantMaterialBuffer(m_vec_matStut);
 }
 
@@ -1817,7 +1837,7 @@ void wxGraphicD3D12::CreateConstantMaterialBuffer(std::vector<wxMaterial>& mat)
 	}
 }
 
-void wxGraphicD3D12::CreateObjConst(std::vector<wxObjConst>& objConst)
+void wxGraphicD3D12::CreateObjConst(std::vector<wxObjConst>& objConst, std::vector<ComPtr<ID3D12Resource>>& objConstRes, std::vector<void*>& objConstDataBegin)
 {
 	for (int i = 0; i != objConst.size(); i++)
 	{
@@ -1843,11 +1863,11 @@ void wxGraphicD3D12::CreateObjConst(std::vector<wxObjConst>& objConst)
 		ConstResDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		ConstResDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		m_device->CreateCommittedResource(&cbvHeapProperties, D3D12_HEAP_FLAG_NONE, &ConstResDesc, \
-			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(m_vec_objConstRes[i]), (void**)&m_vec_objConstRes[i]);
+			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, __uuidof(objConstRes[i]), (void**)&objConstRes[i]);
 
 		D3D12_RANGE readRange = { 0,0 };		// We do not intend to read from this resource on the CPU.
-		m_vec_objConstRes[i]->Map(0, &readRange, &m_pObjConstDataBegin[i]);
-		memcpy(m_pObjConstDataBegin[i], &objConst[i], sizeof(wxObjConst));
+		objConstRes[i]->Map(0, &readRange, &objConstDataBegin[i]);
+		memcpy(objConstDataBegin[i], &objConst[i], sizeof(wxObjConst));
 
 		// Describe and create a SRV for the texture.
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -1861,7 +1881,7 @@ void wxGraphicD3D12::CreateObjConst(std::vector<wxObjConst>& objConst)
 
 		CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(m_srvHeap->GetCPUDescriptorHandleForHeapStart());
 		hDescriptor.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_TRANSFORMMATRIX + i);
-		m_device->CreateShaderResourceView(m_vec_objConstRes[i].Get(), &srvDesc, hDescriptor);
+		m_device->CreateShaderResourceView(objConstRes[i].Get(), &srvDesc, hDescriptor);
 	}
 }
 
@@ -1962,15 +1982,15 @@ void wxGame::wxGraphicD3D12::CreateSSAOBuffer()
 	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
 }
 
-void wxGame::wxGraphicD3D12::CreateCubeTexture(std::string& name)
+void wxGame::wxGraphicD3D12::CreateCubeTexture(const std::string& name)
 {
 	BMPDecoder bmpDecoder;
-	ImageCommon imgCommon[5];
+	ImageCommon imgCommon[6];
 	HRESULT hr;
 
 	for (int i = 0; i != 6; i++)
 	{
-		std::string textureName = name + "_" + std::to_string(i);
+		std::string textureName = name + "_" + std::to_string(i) + SUFFIX_BMP;
 		bmpDecoder.BMPLoader((ASSET_DIRECTORY + textureName).c_str());
 		bmpDecoder.BMPParser(imgCommon[i]);
 	}
@@ -2048,15 +2068,15 @@ void wxGame::wxGraphicD3D12::CreateCubeTexture(std::string& name)
 
 	if (imgCommon[0].imWidth != 0 && imgCommon[0].imHeight != 0)
 	{
-		UpdateSubresources(m_commandList.Get(), CubeMapTexture, CubeMapTexture_UploadHep, 0, 0, 6, &srvSubrecData[0]);
+		UpdateSubresources(m_commandList.Get(), CubeMapTexture, CubeMapTexture_UploadHep, 0, 0, 6, srvSubrecData);
 	}
-
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CubeMapTexture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE srvStart = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	srvStart.ptr += GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT;
+	srvStart.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
 	srvDesc.TextureCube.MipLevels = 1;
 	srvDesc.TextureCube.MostDetailedMip = 0.f;
@@ -2141,11 +2161,11 @@ void wxGraphicD3D12::CheckControllerInput(wxTimer* timer)
 			
 
 					float magnitudeR = sqrt(RX * RX + RY * RY);
-					if (RX * RX < 9000000)
+					if (RX * RX < 90000000)
 					{
 						RX = 0;
 					}
-					if (RY * RY < 9000000)
+					if (RY * RY < 90000000)
 					{
 						RY = 0;
 					}

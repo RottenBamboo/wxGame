@@ -28,13 +28,13 @@ namespace wxGame {
 	struct MeshInfo
 	{
 		std::vector<Vertex> vec_vertices;
-		std::vector<unsigned int> vec_indices;
+		std::vector<int> vec_indices;
 	};
 
 	class SimpleGeometryGenerator
 	{
 	public:
-		MeshInfo GenerateCylinder(float bottomRadius, float topRadius, float height, unsigned int sliceCount, unsigned int stackCount);
-		MeshInfo GenerateSphere(float radius, unsigned int sliceCount, unsigned int stackCount);
+		MeshInfo static GenerateCylinder(float bottomRadius, float topRadius, float height, unsigned int sliceCount, unsigned int stackCount);
+		MeshInfo static GenerateSphere(float radius, unsigned int sliceCount, unsigned int stackCount);
 	};
 }

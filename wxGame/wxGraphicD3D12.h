@@ -8,6 +8,7 @@
 #include "SceneManager.h"
 #include "Intersection.h"
 #include "Primitive.h"
+#include "Mesh.h"
 
 #define SUNLIGHT_COUNT (int)1
 #define SSAO_CONSTANT_COUNT (int)1
@@ -27,6 +28,7 @@
 #define MATCH_TEXTURE "_texture_[0-9]*\\.bmp$"
 #define SUFFIX_BMP ".bmp"
 #define MATCH_NORMALMAP "_normalmap_[0-9]*\\.bmp$"
+const std::string cubetexture = "cubetexture";
 
 using namespace DirectX;
 using namespace Mathmatic;
@@ -187,6 +189,12 @@ namespace wxGame {
 		ID3D12Resource* CubeMapTexture;
 		ID3D12Resource* CubeMapTexture_UploadHep;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_textureUploadHeap;
+		std::vector<MeshInfo> m_vec_MeshSkySphere;
+		std::vector<D3D12_VERTEX_BUFFER_VIEW> m_vec_GeoVertexBufferView;
+		std::vector<D3D12_INDEX_BUFFER_VIEW> m_vec_GeoIndexBufferView;
+		std::vector<wxObjConst> m_vec_GeoObjConstStut;
+		std::vector<ComPtr<ID3D12Resource>> m_vec_GetObjConstRes;
+		std::vector<void*> m_pGeoObjConstDataBegin;
 
 		ComPtr<ID3D12Resource> m_shadowDepthMap;
 		ComPtr<ID3D12Resource> m_NormalMap;
@@ -234,10 +242,10 @@ namespace wxGame {
 		void CreateIndexBuffer(std::vector<D3D12_INDEX_BUFFER_VIEW>& vec_IndexBufferView, int&, size_t);
 		void CreateConstantMaterialBuffer(std::vector<wxMaterial>&);
 		void CreateSunLightBuffer();
-		void CreateObjConst(std::vector<wxObjConst>&);
+		void CreateObjConst(std::vector<wxObjConst>&, std::vector<ComPtr<ID3D12Resource>>&, std::vector<void*>&);
 		void CreateConstantMatrix();
 		void CreateSSAOBuffer();
-		void CreateCubeTexture(std::string&);
+		void CreateCubeTexture(const std::string&);
 		void PopulateCommandList();
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
