@@ -32,7 +32,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_rtvDescriptorSize(0),
 	m_cameraMoveBaseSpeed(0.05f),
 	m_cameraRotationSpeed(0.015f),
-	m_defaultCameraPosition({ 0.f,0.f,50.f,1.f }),
+	m_defaultCameraPosition({ 0.f,0.f,20.f,1.f }),
 	m_defaultLookAt({ 0.0f,0.f,0.f,1.0f}),
 	m_defaultUp({ 0.f,1.f,0.f,0.f }),
 	cameraDistance({ 0.f,0.f,0.f,1.f })
@@ -190,12 +190,12 @@ void wxGraphicD3D12::LoadAssets()
 	m_TypedDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	m_DepthStencilDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	CreateCubeTexture(cubetexture);
-	//m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateSphere(0.01f, 10, 10));
-	m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateCylinder(3.f, 1.f, 3.f, 10, 10));
+	m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateSphere(0.1f, 2, 2));
+	//m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateCylinder(3.f,1.f,3.f, 50, 5));
 	for (int i = 0; i != m_vec_MeshSkySphere.size(); i++)
 	{
 		CreateVertexBuffer(m_vec_GeoVertexBufferView, m_vec_MeshSkySphere[i].vec_vertices[0], m_vec_MeshSkySphere[i].vec_vertices.size());
-		CreateIndexBuffer(m_vec_GeoIndexBufferView, m_vec_MeshSkySphere[i].vec_indices[0], m_vec_MeshSkySphere[i].vec_vertices.size());
+		CreateIndexBuffer(m_vec_GeoIndexBufferView, m_vec_MeshSkySphere[i].vec_indices[0], m_vec_MeshSkySphere[i].vec_indices.size());
 		m_vec_GeoObjConstStut.push_back(wxObjConst());
 	}
 	m_vec_GetObjConstRes.resize(m_vec_GeoObjConstStut.size()); 

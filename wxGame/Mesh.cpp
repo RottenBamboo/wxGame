@@ -36,12 +36,12 @@ MeshInfo SimpleGeometryGenerator::GenerateCylinder(float bottomRadius, float top
 		for (int j = 0; j < sliceCount; j++)
 		{
 			mesh.vec_indices.push_back(i * ringVertexCount + j);
-			mesh.vec_indices.push_back(i * ringVertexCount + j + 1);
 			mesh.vec_indices.push_back((i + 1) * ringVertexCount + j + 1);
+			mesh.vec_indices.push_back(i * ringVertexCount + j + 1);
 
 			mesh.vec_indices.push_back(i * ringVertexCount + j);
-			mesh.vec_indices.push_back((i + 1) * ringVertexCount + j + 1);
 			mesh.vec_indices.push_back((i + 1) * ringVertexCount + j);
+			mesh.vec_indices.push_back((i + 1) * ringVertexCount + j + 1);
 		}
 	}
 
@@ -72,17 +72,17 @@ MeshInfo SimpleGeometryGenerator::GenerateCylinder(float bottomRadius, float top
 	for (int i = 0; i < sliceCount; i++)
 	{
 		mesh.vec_indices.push_back(capCenterIndex);
-		mesh.vec_indices.push_back(capBeginIndex + i);
 		mesh.vec_indices.push_back(capBeginIndex + i + 1);
+		mesh.vec_indices.push_back(capBeginIndex + i);
 	}
 
 	//generate bottom cap
 	capBeginIndex = (int)mesh.vec_vertices.size();
 	for (int i = 0; i <= sliceCount; i++)
 	{
-		vertex.position[0] = topRadius * cosf(i * delta);
+		vertex.position[0] = bottomRadius * cosf(i * delta);
 		vertex.position[1] = -0.5f * height; //top cap height
-		vertex.position[2] = topRadius * sinf(i * delta);
+		vertex.position[2] = bottomRadius * sinf(i * delta);
 		vertex.position[3] = 1.f;
 		vertex.tangent = { 1.0f, 0.0f, 0.0f };
 		vertex.Normal = { 0.0f, -1.0f, 0.0f };
@@ -102,8 +102,8 @@ MeshInfo SimpleGeometryGenerator::GenerateCylinder(float bottomRadius, float top
 
 	for (int i = 0; i < sliceCount; i++)
 	{
-		mesh.vec_indices.push_back(capBeginIndex + i);
 		mesh.vec_indices.push_back(capCenterIndex);
+		mesh.vec_indices.push_back(capBeginIndex + i);
 		mesh.vec_indices.push_back(capBeginIndex + i + 1);
 	}
 	return mesh;
@@ -112,8 +112,8 @@ MeshInfo SimpleGeometryGenerator::GenerateCylinder(float bottomRadius, float top
 MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int sliceCount, unsigned int stackCount)
 {
 	MeshInfo mesh;
-	Vertex topVertex; topVertex.position = { 0.f, radius, 0.f, 1.f }; topVertex.Normal = { 0.f, 1.f, 0.f, 0.f }; topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.uv = { 0.f,0.f };
-	Vertex bottomVertex; topVertex.position = { 0.f, -radius, 0.f, 1.f }; topVertex.Normal = { 0.f, -1.f, 0.f, 0.f }; topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.uv = { 0.f,1.f };
+	Vertex topVertex; topVertex.position = { 0.f, radius, 0.f, 1.f }; topVertex.Normal = { 0.f, 1.f, 0.f }; topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.uv = { 0.f,0.f };
+	Vertex bottomVertex; topVertex.position = { 0.f, -radius, 0.f, 1.f }; topVertex.Normal = { 0.f, -1.f, 0.f }; topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.uv = { 0.f,1.f };
 	
 	mesh.vec_vertices.push_back(topVertex);
 	float verticalStep = PI / stackCount;
@@ -130,6 +130,7 @@ MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int slic
 			vertex.position[0] = radius * sinf(vertical) * cosf(horizental);
 			vertex.position[1] = radius * cosf(vertical);
 			vertex.position[2] = radius * sinf(vertical) * sinf(horizental);
+			vertex.position[3] = 1.f;
 			vertex.position = vectorNormalize(vertex.position);
 			vertex.tangent[0] = -radius * sinf(vertical) * sinf(horizental);
 			vertex.tangent[1] = 0.f;
@@ -141,8 +142,8 @@ MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int slic
 			vertex.Normal[1] = normal[1];
 			vertex.Normal[2] = normal[2];
 
-			vertex.uv[0] = vertical / (2 * PI);
-			vertex.uv[1] = horizental / PI;
+			vertex.uv[0] = horizental / (2 * PI);
+			vertex.uv[1] = vertical / PI;
 
 			mesh.vec_vertices.push_back(vertex);
 		}
@@ -163,13 +164,13 @@ MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int slic
 	{
 		for (int j = 0; j < sliceCount; j++)
 		{
+			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j);
 			mesh.vec_indices.push_back(topIndex + (i + 1) * ringVertexCount + j);
 			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j + 1);
-			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j);
 
+			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j);
 			mesh.vec_indices.push_back(topIndex + (i + 1) * ringVertexCount + j);
 			mesh.vec_indices.push_back(topIndex + (i + 1) * ringVertexCount + j + 1);
-			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j + 1);
 		}
 	}
 	//bottom pole index
