@@ -135,6 +135,12 @@ MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int slic
 			vertex.tangent[1] = 0.f;
 			vertex.tangent[2] = radius * sinf(vertical) * cosf(horizental);
 			vertex.tangent = vectorNormalize(vertex.tangent);
+
+			Vector4FT normal = vectorNormalize(vertex.position);
+			vertex.Normal[0] = normal[0];
+			vertex.Normal[1] = normal[1];
+			vertex.Normal[2] = normal[2];
+
 			vertex.uv[0] = vertical / (2 * PI);
 			vertex.uv[1] = horizental / PI;
 
