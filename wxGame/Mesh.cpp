@@ -20,11 +20,11 @@ MeshInfo SimpleGeometryGenerator::GenerateCylinder(float bottomRadius, float top
 			float s = sinf(j * delta);
 			vertex.position = { r * c, y, r * s, 1.f };
 			vertex.uv[0] = (float)j / sliceCount;
-			vertex.uv[1] = 1.f - (float)i / stackCount;
+			vertex.uv[1] = (float)i / stackCount;
 			vertex.tangent = {-s, 0.f, c};
 			float dr = bottomRadius - topRadius;
 			Vector3FT bitangent = (dr * c, -height, dr * s);
-			vertex.Normal = vectorNormalize(vectorCrossProduct(vertex.tangent, bitangent));
+			vertex.Normal = vectorNormalize(vectorCrossProduct(bitangent, vertex.tangent));
 			mesh.vec_vertices.push_back(vertex);
 		}
 	}
