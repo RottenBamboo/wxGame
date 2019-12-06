@@ -190,7 +190,7 @@ void wxGraphicD3D12::LoadAssets()
 	m_TypedDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	m_DepthStencilDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	CreateCubeTexture(cubetexture);
-	m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateSphere(0.1f, 2, 2));
+	m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateSphere(10.f, 50, 50));
 	//m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateCylinder(3.f,1.f,3.f, 50, 5));
 	for (int i = 0; i != m_vec_MeshSkySphere.size(); i++)
 	{
@@ -905,7 +905,7 @@ void wxGraphicD3D12::WaitForPreviousFrame()
 
 void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 {
-	//angleAxisY += angleAxisYPerSecond * timer->DeltaTime();
+	angleAxisY += angleAxisYPerSecond * timer->DeltaTime();
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.cameraPos = m_defaultCameraPosition;
 	constBuff.viewPos = m_defaultLookAt;

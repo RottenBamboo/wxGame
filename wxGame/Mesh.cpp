@@ -112,8 +112,10 @@ MeshInfo SimpleGeometryGenerator::GenerateCylinder(float bottomRadius, float top
 MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int sliceCount, unsigned int stackCount)
 {
 	MeshInfo mesh;
-	Vertex topVertex; topVertex.position = { 0.f, radius, 0.f, 1.f }; topVertex.Normal = { 0.f, 1.f, 0.f }; topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.uv = { 0.f,0.f };
-	Vertex bottomVertex; topVertex.position = { 0.f, -radius, 0.f, 1.f }; topVertex.Normal = { 0.f, -1.f, 0.f }; topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.uv = { 0.f,1.f };
+	Vertex topVertex;	 topVertex.position = { 0.f, radius, 0.f, 1.f }; topVertex.Normal = { 0.f, 1.f, 0.f }; 
+						 topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.uv = { 0.f,0.f };
+	Vertex bottomVertex; bottomVertex.position = { 0.f, -radius, 0.f, 1.f }; bottomVertex.Normal = { 0.f, -1.f, 0.f };
+						 bottomVertex.tangent = { 1.f, 0.f, 0.f }; bottomVertex.uv = { 0.f,1.f };
 	
 	mesh.vec_vertices.push_back(topVertex);
 	float verticalStep = PI / stackCount;
@@ -154,22 +156,22 @@ MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int slic
 	for (int i = 0; i <= sliceCount; i++)
 	{
 		mesh.vec_indices.push_back(0);
-		mesh.vec_indices.push_back(i);
 		mesh.vec_indices.push_back(i + 1);
+		mesh.vec_indices.push_back(i);
 	}
 	//surrounding primitive
 	int topIndex = 1;
 	int ringVertexCount = sliceCount + 1;
-	for (int i = 1; i < stackCount - 1; i++) // no top pole or bottom pole vertex
+	for (int i = 1; i < stackCount - 2; i++) // no top pole or bottom pole vertex
 	{
 		for (int j = 0; j < sliceCount; j++)
 		{
-			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j);
+			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j);	//this indices sequnce is from top vertex to bottom vertex;
+			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j + 1);
+			mesh.vec_indices.push_back(topIndex + (i + 1) * ringVertexCount + j);
+
 			mesh.vec_indices.push_back(topIndex + (i + 1) * ringVertexCount + j);
 			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j + 1);
-
-			mesh.vec_indices.push_back(topIndex + i * ringVertexCount + j);
-			mesh.vec_indices.push_back(topIndex + (i + 1) * ringVertexCount + j);
 			mesh.vec_indices.push_back(topIndex + (i + 1) * ringVertexCount + j + 1);
 		}
 	}
@@ -179,8 +181,8 @@ MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int slic
 	int bottomPrimitiveIndex = bottomIndex - ringVertexCount;
 	for (int i = 0; i < sliceCount; i++)
 	{
-		mesh.vec_indices.push_back(bottomPrimitiveIndex + i);
 		mesh.vec_indices.push_back(bottomIndex);
+		mesh.vec_indices.push_back(bottomPrimitiveIndex + i);
 		mesh.vec_indices.push_back(bottomPrimitiveIndex + i + 1);
 	}
 	return mesh;
