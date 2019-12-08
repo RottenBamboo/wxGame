@@ -112,10 +112,12 @@ MeshInfo SimpleGeometryGenerator::GenerateCylinder(float bottomRadius, float top
 MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int sliceCount, unsigned int stackCount)
 {
 	MeshInfo mesh;
-	Vertex topVertex;	 topVertex.position = { 0.f, radius, 0.f, 1.f }; topVertex.Normal = { 0.f, 1.f, 0.f }; 
-						 topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.uv = { 0.f,0.f };
-	Vertex bottomVertex; bottomVertex.position = { 0.f, -radius, 0.f, 1.f }; bottomVertex.Normal = { 0.f, -1.f, 0.f };
-						 bottomVertex.tangent = { 1.f, 0.f, 0.f }; bottomVertex.uv = { 0.f,1.f };
+	Vertex topVertex;	 topVertex.position = { 0.f, radius, 0.f, 1.f }; topVertex.position = vectorNormalize(topVertex.position); 
+						 topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.tangent = vectorNormalize(topVertex.tangent);
+						 topVertex.Normal = { 0.f, 1.f, 0.f }; topVertex.uv = { 0.f,0.f };
+	Vertex bottomVertex; bottomVertex.position = { 0.f, -radius, 0.f, 1.f }; bottomVertex.position = vectorNormalize(topVertex.position); 
+						 bottomVertex.tangent = { 1.f, 0.f, 0.f }; bottomVertex.tangent = vectorNormalize(topVertex.tangent); 
+						 bottomVertex.Normal = { 0.f, -1.f, 0.f }; bottomVertex.uv = { 0.f,1.f };
 	
 	mesh.vec_vertices.push_back(topVertex);
 	float verticalStep = PI / stackCount;
@@ -162,7 +164,7 @@ MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int slic
 	//surrounding primitive
 	int topIndex = 1;
 	int ringVertexCount = sliceCount + 1;
-	for (int i = 1; i < stackCount - 2; i++) // no top pole or bottom pole vertex
+	for (int i = 0; i < stackCount - 2; i++) // no top pole or bottom pole vertex
 	{
 		for (int j = 0; j < sliceCount; j++)
 		{

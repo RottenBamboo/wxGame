@@ -173,9 +173,10 @@ namespace wxGame {
 		ComPtr<ID3D12PipelineState> m_defaultPipelineState;
 		ComPtr<ID3D12PipelineState> m_boundingBoxPipelineState;
 		ComPtr<ID3D12PipelineState> m_shadowMapPipelineState;
-		ComPtr<ID3D12PipelineState> m_DrawNormalPipelineState;
-		ComPtr<ID3D12PipelineState> m_SsaoPipelineState;
-		ComPtr<ID3D12PipelineState> m_BlurSsaoPipelineState;
+		ComPtr<ID3D12PipelineState> m_drawNormalPipelineState;
+		ComPtr<ID3D12PipelineState> m_ssaoPipelineState;
+		ComPtr<ID3D12PipelineState> m_blurSsaoPipelineState;
+		ComPtr<ID3D12PipelineState> m_skyboxPipelineState;
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		UINT m_rtvDescriptorSize;
 
@@ -247,11 +248,11 @@ namespace wxGame {
 		void CreateSSAOBuffer();
 		void CreateCubeTexture(const std::string&);
 		void PopulateCommandList();
+		void PopulateSkyboxCommandList();
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
 		void PopulateSSAOCommandList();
 		void PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal);
-		void DrawBoundingBox();
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(wxTimer* timer);
 		void UpdateShadowMatrix(void);

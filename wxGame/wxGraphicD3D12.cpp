@@ -20,7 +20,7 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	angleAxisY(0.f),
 	angleAxisYPerSecond((2 * PI) / 12.f),
 	mSunAngleAxisY(0.f),
-	mSunAngleAxisYPerSec(0.5f),
+	mSunAngleAxisYPerSec((2 * PI) / 24.f),
 	m_frameIndex(0),
 	m_fenceEvent(HANDLE()),
 	m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
@@ -32,8 +32,8 @@ wxGraphicD3D12::wxGraphicD3D12(UINT width, UINT height, std::wstring name) :
 	m_rtvDescriptorSize(0),
 	m_cameraMoveBaseSpeed(0.05f),
 	m_cameraRotationSpeed(0.015f),
-	m_defaultCameraPosition({ 0.f,0.f,20.f,1.f }),
-	m_defaultLookAt({ 0.0f,0.f,0.f,1.0f}),
+	m_defaultCameraPosition({ 0.f,10.f,30.f,1.f }),
+	m_defaultLookAt({ 0.0f,5.f,0.f,1.0f}),
 	m_defaultUp({ 0.f,1.f,0.f,0.f }),
 	cameraDistance({ 0.f,0.f,0.f,1.f })
 {}
@@ -190,8 +190,7 @@ void wxGraphicD3D12::LoadAssets()
 	m_TypedDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	m_DepthStencilDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	CreateCubeTexture(cubetexture);
-	m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateSphere(10.f, 50, 50));
-	//m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateCylinder(3.f,1.f,3.f, 50, 5));
+	m_vec_MeshSkySphere.push_back(SimpleGeometryGenerator::GenerateSphere(0.5f, 20, 20));
 	for (int i = 0; i != m_vec_MeshSkySphere.size(); i++)
 	{
 		CreateVertexBuffer(m_vec_GeoVertexBufferView, m_vec_MeshSkySphere[i].vec_vertices[0], m_vec_MeshSkySphere[i].vec_vertices.size());
@@ -451,6 +450,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ComPtr<ID3DBlob> pixelBlurSSAOShader;
 		ComPtr<ID3DBlob> vertexBoundingBoxShader;
 		ComPtr<ID3DBlob> pixelBoundingBoxShader;
+		ComPtr<ID3DBlob> vertexSkyboxShader;
+		ComPtr<ID3DBlob> pixelSkyboxShader;
 
 #if defined(_DEBUG)
 		// Enable better shader debugging with the graphics debugging tools.
@@ -577,7 +578,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		drawNormalPsoDesc.SampleDesc.Count = 1;
 		drawNormalPsoDesc.SampleDesc.Quality = 0;
 		drawNormalPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;	//this specified the not drawing face of the object
-		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&drawNormalPsoDesc, IID_PPV_ARGS(&m_DrawNormalPipelineState)));
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&drawNormalPsoDesc, IID_PPV_ARGS(&m_drawNormalPipelineState)));
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\ssao_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexSSAOShader, nullptr));
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\ssao_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelSSAOShader, nullptr));
@@ -600,13 +601,33 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ssaoPsoDesc.SampleDesc.Count = 1;
 		ssaoPsoDesc.SampleDesc.Quality = 0;
 		ssaoPsoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
-		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_SsaoPipelineState)));
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_ssaoPipelineState)));
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blurssao_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexBlurSSAOShader, nullptr));
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blurssao_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelBlurSSAOShader, nullptr));
 		ssaoPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexBlurSSAOShader.Get());
 		ssaoPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelBlurSSAOShader.Get());
-		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_BlurSsaoPipelineState)));
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_blurSsaoPipelineState)));
+
+		//skybox pipeline
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\skybox_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexSkyboxShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\skybox_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelSkyboxShader, nullptr));
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC skyboxPsoDesc = psoDesc;
+		skyboxPsoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+		skyboxPsoDesc.pRootSignature = m_rootSignature.Get();
+		skyboxPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexSkyboxShader.Get());
+		skyboxPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelSkyboxShader.Get());
+		skyboxPsoDesc.SampleMask = UINT_MAX;
+		skyboxPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		skyboxPsoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		skyboxPsoDesc.NumRenderTargets = 1;
+		skyboxPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		skyboxPsoDesc.RasterizerState = RasterizerDefault;
+		skyboxPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		skyboxPsoDesc.SampleDesc.Count = 1;
+		skyboxPsoDesc.SampleDesc.Quality = 0;
+		skyboxPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&skyboxPsoDesc, IID_PPV_ARGS(&m_skyboxPipelineState)));
 }
 void wxGraphicD3D12::PopulateShadowMapCommandList()
 {
@@ -664,7 +685,7 @@ void wxGame::wxGraphicD3D12::PopulateNormalCommandList()
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
 
 	m_commandList->OMSetStencilRef(0);
-	m_commandList->SetPipelineState(m_DrawNormalPipelineState.Get());
+	m_commandList->SetPipelineState(m_drawNormalPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
@@ -702,7 +723,7 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, nullptr);
 
 	m_commandList->OMSetStencilRef(0);
-	m_commandList->SetPipelineState(m_SsaoPipelineState.Get());
+	m_commandList->SetPipelineState(m_ssaoPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
@@ -742,7 +763,7 @@ void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> 
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, nullptr);
 
 	m_commandList->OMSetStencilRef(0);
-	m_commandList->SetPipelineState(m_BlurSsaoPipelineState.Get());
+	m_commandList->SetPipelineState(m_blurSsaoPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
@@ -787,6 +808,7 @@ void wxGraphicD3D12::PopulateCommandList()
 		//PopulateBlurSSAOCommandList(m_AmbientMap1, false);
 	}
 	PopulateShadowMapCommandList();
+
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
@@ -801,6 +823,8 @@ void wxGraphicD3D12::PopulateCommandList()
 	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
+	PopulateSkyboxCommandList();
+
 	m_commandList->OMSetStencilRef(0);
 	m_commandList->SetPipelineState(m_defaultPipelineState.Get());
 	// Record commands.
@@ -808,7 +832,6 @@ void wxGraphicD3D12::PopulateCommandList()
 	//draw objects
 	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
 	{
-		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvOffset.ptr += i * m_TypedDescriptorSize;
 		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);	//texture
@@ -826,20 +849,10 @@ void wxGraphicD3D12::PopulateCommandList()
 		m_commandList->DrawIndexedInstanced(m_vec_numIndices[i], 1, 0, 0, 0);
 	}
 
-	//draw simple geometry
-	for (int i = 0; i < m_vec_MeshSkySphere.size(); i++)
-	{
-		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_GeoVertexBufferView[i]));
-		m_commandList->IASetIndexBuffer(&m_vec_GeoIndexBufferView[i]); 
-		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_GetObjConstRes[i]->GetGPUVirtualAddress());	//transform matrix
-		m_commandList->DrawIndexedInstanced(m_vec_MeshSkySphere[i].vec_indices.size(), 1, 0, 0, 0);
-	}
 	m_commandList->SetPipelineState(m_boundingBoxPipelineState.Get());
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 	for (int i = 0; i < GetSceneGeometryNodeCount(); i++)
 	{
-		//m_commandList->IASetVertexBuffers(0, 1, &(m_vec_boundingBoxVertexBufferView[i]));
-		//m_commandList->IASetIndexBuffer(&m_vec_boundingBoxIndexBufferView[i]);
 		m_commandList->DrawInstanced(24, 1, 0, 0);
 	}
 
@@ -850,6 +863,26 @@ void wxGraphicD3D12::PopulateCommandList()
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	ThrowIfFailed(m_commandList->Close());
+}
+
+void wxGame::wxGraphicD3D12::PopulateSkyboxCommandList()
+{	
+	//m_commandList->OMSetStencilRef(0);
+	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_commandList->SetPipelineState(m_skyboxPipelineState.Get());
+
+	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	srvOffset.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT);
+	//draw simple geometry
+	for (int i = 0; i < m_vec_MeshSkySphere.size(); i++)
+	{
+		m_commandList->SetGraphicsRootDescriptorTable(0, srvOffset);	//texture
+		m_commandList->IASetVertexBuffers(0, 1, &(m_vec_GeoVertexBufferView[i]));
+		m_commandList->IASetIndexBuffer(&m_vec_GeoIndexBufferView[i]);
+		m_commandList->SetGraphicsRootShaderResourceView(2, m_vec_GetObjConstRes[i]->GetGPUVirtualAddress());	//transform matrix
+		m_commandList->DrawIndexedInstanced(m_vec_MeshSkySphere[i].vec_indices.size(), 1, 0, 0, 0);
+	}
+	
 }
 
 // Update frame-based values.
@@ -905,7 +938,7 @@ void wxGraphicD3D12::WaitForPreviousFrame()
 
 void wxGraphicD3D12::UpdateConstantBuffer(wxTimer* timer)
 {
-	angleAxisY += angleAxisYPerSecond * timer->DeltaTime();
+	//angleAxisY += angleAxisYPerSecond * timer->DeltaTime();
 	constBuff.rotatMatrix = MatrixRotationY(angleAxisY);
 	constBuff.cameraPos = m_defaultCameraPosition;
 	constBuff.viewPos = m_defaultLookAt;
@@ -946,9 +979,10 @@ void wxGame::wxGraphicD3D12::UpdateShadowMatrix(void)
 
 void wxGame::wxGraphicD3D12::UpdateSunLight(wxTimer * timer)
 {
-	mSunAngleAxisY += mSunAngleAxisYPerSec * timer->DeltaTime();
-	int k = mSunAngleAxisY / 360;
-	mSunAngleAxisY = mSunAngleAxisY - k * 360;
+	//mSunAngleAxisY += mSunAngleAxisYPerSec * timer->DeltaTime();
+	mSunAngleAxisY = PI * 1.666f;
+	int k = mSunAngleAxisY / (PI * 2);
+	mSunAngleAxisY = mSunAngleAxisY - k * PI * 2;
 	m_sunLightBuff.Direction = Vector3FT({ 0.f, -1.f, -1.f });//don't accumulate the direction value,but set default value every time;
 	Vector4FT Direction = { m_sunLightBuff.Direction[0], m_sunLightBuff.Direction[1], m_sunLightBuff.Direction[2], 0.f };
 	RotateYAxis(Direction, mSunAngleAxisY);
@@ -2006,19 +2040,20 @@ void wxGame::wxGraphicD3D12::CreateCubeTexture(const std::string& name)
 	textureDesc.SampleDesc.Count = 1;
 	textureDesc.SampleDesc.Quality = 0;
 	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	textureDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
 	hr = m_device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&textureDesc,
-		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
 		IID_PPV_ARGS(&(CubeMapTexture)));
 
 	UINT64 uploadBufferSize = 0;
 	if (imgCommon[0].imWidth != 0 && imgCommon[0].imHeight != 0)
 	{
-		uploadBufferSize = GetRequiredIntermediateSize(CubeMapTexture, 0, 1);
+		uploadBufferSize = GetRequiredIntermediateSize(CubeMapTexture, 0, 6);
 	}
 
 	// Create the GPU upload buffer.
@@ -2065,7 +2100,7 @@ void wxGame::wxGraphicD3D12::CreateCubeTexture(const std::string& name)
 		srvSubrecData[i].RowPitch = imgCommon[i].imPitch;
 		srvSubrecData[i].SlicePitch = imgCommon[i].imPitch * imgCommon[i].imHeight;
 	}
-
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CubeMapTexture, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
 	if (imgCommon[0].imWidth != 0 && imgCommon[0].imHeight != 0)
 	{
 		UpdateSubresources(m_commandList.Get(), CubeMapTexture, CubeMapTexture_UploadHep, 0, 0, 6, srvSubrecData);
