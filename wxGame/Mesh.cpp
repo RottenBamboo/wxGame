@@ -115,8 +115,8 @@ MeshInfo SimpleGeometryGenerator::GenerateSphere(float radius, unsigned int slic
 	Vertex topVertex;	 topVertex.position = { 0.f, radius, 0.f, 1.f }; topVertex.position = vectorNormalize(topVertex.position); 
 						 topVertex.tangent = { 1.f, 0.f, 0.f }; topVertex.tangent = vectorNormalize(topVertex.tangent);
 						 topVertex.Normal = { 0.f, 1.f, 0.f }; topVertex.uv = { 0.f,0.f };
-	Vertex bottomVertex; bottomVertex.position = { 0.f, -radius, 0.f, 1.f }; bottomVertex.position = vectorNormalize(topVertex.position); 
-						 bottomVertex.tangent = { 1.f, 0.f, 0.f }; bottomVertex.tangent = vectorNormalize(topVertex.tangent); 
+	Vertex bottomVertex; bottomVertex.position = { 0.f, -radius, 0.f, 1.f }; bottomVertex.position = vectorNormalize(bottomVertex.position);
+						 bottomVertex.tangent = { 1.f, 0.f, 0.f }; bottomVertex.tangent = vectorNormalize(bottomVertex.tangent);
 						 bottomVertex.Normal = { 0.f, -1.f, 0.f }; bottomVertex.uv = { 0.f,1.f };
 	
 	mesh.vec_vertices.push_back(topVertex);
