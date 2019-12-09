@@ -57,9 +57,8 @@ PSOutput VSMain(uint vid : SV_VertexID)
 {
 	PSOutput result = (PSOutput)0.0f;
 	result.uv = g_texCoords[vid];
-	result.position = float4(2.0f * result.uv.x - 1.f, 2.f - 2.0f * result.uv.y - 1.0f, 0.0f, 1.0f);
+	result.position = float4(2.0f * result.uv.x - 1.f, 1.f - 2.0f * result.uv.y, 0.0f, 1.0f);
 	float4 ph = mul(invProjMatrix, result.position);
 	result.positionH.xyz = ph.xyz / ph.w;
-	result.positionH.w = 1.f;
 	return result;
 }
