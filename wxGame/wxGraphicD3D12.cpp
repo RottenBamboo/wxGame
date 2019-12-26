@@ -302,7 +302,7 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ranges[5].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SSAO_CONSTANT_COUNT, 2, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //ssao constant
 		ranges[6].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, AmbientMapCount, 6, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //ssao map 
 		ranges[7].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, GuassianBlurSRVCount, 7, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //guassian srv uav
-		ranges[8].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, GuassianBlurUAVCount, 8, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //guassian blur uav
+		ranges[8].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, GuassianBlurUAVCount, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //guassian blur uav
 
 		CD3DX12_ROOT_PARAMETER1 rootParameters[12];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
@@ -829,6 +829,7 @@ void wxGraphicD3D12::PopulateCommandList()
 		//PopulateBlurSSAOCommandList(m_AmbientMap2, true);
 		//PopulateBlurSSAOCommandList(m_AmbientMap1, false);
 	}
+	PopulateBlurComputeCommandList();
 	PopulateShadowMapCommandList();
 
 	m_commandList->RSSetViewports(1, &m_viewport);
@@ -940,6 +941,69 @@ void wxGraphicD3D12::OnDestroy()
 
 	CloseHandle(m_fenceEvent);
 }
+
+void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
+{
+	m_commandList->SetComputeRootSignature(m_rootSignature.Get());
+
+	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
+	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes,
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
+
+	// Copy the input (back-buffer in this example) to BlurMap0.
+	m_commandList->CopyResource(blurHorizentalRes, m_renderTargets[m_frameIndex].Get());
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes,
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+
+	for (int i = 0; i < 2; i++)
+	{
+		m_commandList->SetPipelineState(m_blurHorizentalPipelineState.Get());
+		//horizental srv uav
+		D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount) * m_TypedDescriptorSize;
+		m_commandList->SetComputeRootDescriptorTable(9, srvConstantBuff);
+
+		srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount) * m_TypedDescriptorSize;
+		m_commandList->SetComputeRootDescriptorTable(10, srvConstantBuff);
+
+		int groupNumWidth = ceilf(m_width / 256.f);
+		m_commandList->Dispatch(groupNumWidth, m_height, 1);
+		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+
+		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ));
+
+
+		m_commandList->SetPipelineState(m_blurHorizentalPipelineState.Get());
+		//vertical srv uav
+		srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + 1) * m_TypedDescriptorSize;
+		m_commandList->SetComputeRootDescriptorTable(9, srvConstantBuff);
+
+		srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + 1) * m_TypedDescriptorSize;
+		m_commandList->SetComputeRootDescriptorTable(10, srvConstantBuff);
+
+		int groupNumHeight = ceilf(m_height / 256.f);
+		m_commandList->Dispatch(m_width, groupNumHeight, 1);
+		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+
+		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ));
+	}
+}
+
 
 void wxGraphicD3D12::WaitForPreviousFrame()
 {

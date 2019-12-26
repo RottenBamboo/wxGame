@@ -1,4 +1,60 @@
-[numthreads(1, 1, 1)]
-void BlurHortizentalCS( uint3 DTid : SV_DispatchThreadID )
+
+cbuffer cParamContants:register(b3)
 {
+	bool isHorizontal;
+}
+
+cbuffer ssaoMatrix : register(b2)
+{
+	float4 g_offsetVectors[14];
+	float4 blurWeights[3];
+	float g_occlusionRadius;
+	float g_occlusionFadeStart;
+	float g_occlusionFadeEnd;
+	float g_surfaceEpsilon;
+	float DimensionWidth;
+	float DimensionHeight;
+}
+
+static const int gBlurRadius = 5;
+Texture2D horizentalMapInput : register(t7);
+RWTexture2D<float4> horizentalMapOutput : register(u0);
+static const int g_SampleCount = 14;
+
+#define N 256
+#define CacheSize (N + 2*gBlurRadius)
+groupshared float4 gCache[CacheSize];
+
+[numthreads(N, 1, 1)]
+void BlurHortizentalCS( uint3 groupThreadID : SV_GroupThreadID, int3 dispatchThreadID : SV_DispatchThreadID)
+{
+	float BlurWeightsArray[12] =
+	{
+		blurWeights[0].x, blurWeights[0].y, blurWeights[0].z, blurWeights[0].w,
+		blurWeights[1].x, blurWeights[1].y, blurWeights[1].z, blurWeights[1].w,
+		blurWeights[2].x, blurWeights[2].y, blurWeights[2].z, blurWeights[2].w,
+	};
+	if (groupThreadID.x < gBlurRadius)
+	{
+		int x = max(dispatchThreadID.x - gBlurRadius, 0);
+		gCache[groupThreadID.x] = horizentalMapInput[int2(x, dispatchThreadID.y)];
+	}
+	if (groupThreadID.x >= N - gBlurRadius)
+	{
+		// Clamp out of bound samples that occur at image borders.
+		int x = min(dispatchThreadID.x + gBlurRadius, horizentalMapInput.Length.x - 1);
+		gCache[groupThreadID.x + 2 * gBlurRadius] = horizentalMapInput[int2(x, dispatchThreadID.y)];
+	}
+	gCache[groupThreadID.x + gBlurRadius] = horizentalMapInput[min(dispatchThreadID.xy, horizentalMapInput.Length.xy - 1)];
+	GroupMemoryBarrierWithGroupSync();
+
+	float4 blurColor = float4(0, 0, 0, 0);
+
+	for (int i = -gBlurRadius; i <= gBlurRadius; ++i)
+	{
+		int k = groupThreadID.x + gBlurRadius + i;
+
+		blurColor += BlurWeightsArray[i + gBlurRadius] * gCache[k];
+	}
+	horizentalMapOutput[dispatchThreadID.xy] = blurColor;
 }
