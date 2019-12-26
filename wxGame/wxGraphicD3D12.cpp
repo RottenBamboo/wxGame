@@ -144,7 +144,7 @@ void wxGraphicD3D12::LoadPipeline()
 
 		// Describe and create a shader resource view (SRV) heap for the texture.
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT + CUBE_MAP_TEXTURE_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
+		srvHeapDesc.NumDescriptors = GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT + CUBE_MAP_TEXTURE_COUNT;	//order of the srv in srvHeap is:texture(more the one), material(geometry count)//SHADOW_MAP_DSV_COUNT used for srv
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;												//TransformMatrix(geometry count), light matrix, world related matrix.
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;																	
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
@@ -252,6 +252,7 @@ void wxGraphicD3D12::LoadAssets()
 	GenerateRandomVectorTexture();
 	BuildOffsetVectors();
 	CreateSSAOBuffer();
+	CreateBlurBuffer();
 	// Close the command list and execute it to begin the initial GPU setup.
 	ThrowIfFailed(m_commandList->Close());
 	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
@@ -292,16 +293,18 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 		}
 
-		CD3DX12_DESCRIPTOR_RANGE1 ranges[7];
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[9];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//texture resource view, specified shaderRegister number
 		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//normal texture, specified shaderRegister number
 		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 4, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//shadow map(all kinds of depth map), specified shaderRegister number
 		ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 5, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);	//random vector map, specified shaderRegister number
 		ranges[5].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, SSAO_CONSTANT_COUNT, 2, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //ssao constant
-		ranges[6].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, AmbientMapCount, 6, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //ssao map
+		ranges[6].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, AmbientMapCount, 6, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //ssao map 
+		ranges[7].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, GuassianBlurSRVCount, 7, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //guassian srv uav
+		ranges[8].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, GuassianBlurUAVCount, 8, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); //guassian blur uav
 
-		CD3DX12_ROOT_PARAMETER1 rootParameters[10];
+		CD3DX12_ROOT_PARAMETER1 rootParameters[12];
 		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
 		rootParameters[1].InitAsShaderResourceView(1, 0);//material resource view
 		rootParameters[2].InitAsShaderResourceView(2, 0);//transform matrix resource view
@@ -311,7 +314,9 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		rootParameters[6].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_ALL);
 		rootParameters[7].InitAsDescriptorTable(1, &ranges[5], D3D12_SHADER_VISIBILITY_ALL);
 		rootParameters[8].InitAsDescriptorTable(1, &ranges[6], D3D12_SHADER_VISIBILITY_ALL);
-		rootParameters[9].InitAsConstants(1, 3);		//ssao blur horizontal or vertical
+		rootParameters[9].InitAsDescriptorTable(1, &ranges[7], D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[10].InitAsDescriptorTable(1, &ranges[8], D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[11].InitAsConstants(1, 3);		//ssao blur horizontal or vertical
 
 		D3D12_STATIC_SAMPLER_DESC sampleDesc[7];
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
@@ -452,6 +457,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ComPtr<ID3DBlob> pixelBoundingBoxShader;
 		ComPtr<ID3DBlob> vertexSkyboxShader;
 		ComPtr<ID3DBlob> pixelSkyboxShader;
+		ComPtr<ID3DBlob> blurHorizentalShader;
+		ComPtr<ID3DBlob> blurVerticalShader;
 
 #if defined(_DEBUG)
 		// Enable better shader debugging with the graphics debugging tools.
@@ -603,11 +610,11 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ssaoPsoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_ssaoPipelineState)));
 
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blurssao_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexBlurSSAOShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blurssao_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelBlurSSAOShader, nullptr));
-		ssaoPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexBlurSSAOShader.Get());
-		ssaoPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelBlurSSAOShader.Get());
-		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_blurSsaoPipelineState)));
+		//ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blurssao_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexBlurSSAOShader, nullptr));
+		//ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blurssao_ps.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &pixelBlurSSAOShader, nullptr));
+		//ssaoPsoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexBlurSSAOShader.Get());
+		//ssaoPsoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelBlurSSAOShader.Get());
+		//ThrowIfFailed(m_device->CreateGraphicsPipelineState(&ssaoPsoDesc, IID_PPV_ARGS(&m_blurSsaoPipelineState)));
 
 		//skybox pipeline
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\skybox_vs.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &vertexSkyboxShader, nullptr));
@@ -628,6 +635,21 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		skyboxPsoDesc.SampleDesc.Quality = 0;
 		skyboxPsoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&skyboxPsoDesc, IID_PPV_ARGS(&m_skyboxPipelineState)));
+
+		//Gaussian blur compute pso.
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blur_horizontal.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "BlurHortizentalCS", "cs_5_0", compileFlags, 0, &blurHorizentalShader, nullptr));
+		D3D12_COMPUTE_PIPELINE_STATE_DESC blurHorizentalPsoDesc = {};
+		blurHorizentalPsoDesc.pRootSignature = m_rootSignature.Get();
+		blurHorizentalPsoDesc.CS = CD3DX12_SHADER_BYTECODE(blurHorizentalShader.Get());
+		blurHorizentalPsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+		ThrowIfFailed(m_device->CreateComputePipelineState(&blurHorizentalPsoDesc, IID_PPV_ARGS(&m_blurHorizentalPipelineState)));
+
+		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blur_vertical.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "BlurVerticalCS", "cs_5_0", compileFlags, 0, &blurVerticalShader, nullptr));
+		D3D12_COMPUTE_PIPELINE_STATE_DESC blurVerticalPsoDesc = {};
+		blurVerticalPsoDesc.pRootSignature = m_rootSignature.Get();
+		blurVerticalPsoDesc.CS = CD3DX12_SHADER_BYTECODE(blurVerticalShader.Get());
+		blurVerticalPsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+		ThrowIfFailed(m_device->CreateComputePipelineState(&blurVerticalPsoDesc, IID_PPV_ARGS(&m_blurVerticalPipelineState)));
 }
 void wxGraphicD3D12::PopulateShadowMapCommandList()
 {
@@ -727,7 +749,7 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
-	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
+	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
@@ -737,53 +759,53 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + +SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//ssao normalmap
 	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT) * m_TypedDescriptorSize;
+	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(5, srvOffset);	//depth map
 	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount) * m_TypedDescriptorSize;
+	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(6, srvOffset);	//random vector map
 	m_commandList->DrawInstanced(6, 1, 0, 0);
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap1.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
-void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal)
-{
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
-
-	//blurAmbiemtMap horizontal is next to the origin ambient map.
-	//blurAmbientMap vertical use the origin ambient map render target as the final render target
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount + int(isHorizontal));
-																							
-																							
-	float clearColor[] = { 1.0f,1.0f,1.0f,1.0f };
-	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, nullptr);
-
-	m_commandList->OMSetStencilRef(0);
-	m_commandList->SetPipelineState(m_blurSsaoPipelineState.Get());
-	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
-	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
-	m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
-
-	// Use the other ambient map srv
-	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + int(!isHorizontal));
-	m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//AmbientMap
-
-	m_commandList->SetGraphicsRoot32BitConstant(9, isHorizontal, 0);	//horizontal or vertical blur
-
-	m_commandList->IASetVertexBuffers(0, 0, nullptr);
-	m_commandList->IASetIndexBuffer(nullptr);
-
-	m_commandList->DrawInstanced(6, 1, 0, 0);
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
-}
+//void wxGame::wxGraphicD3D12::PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal)
+//{
+//	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
+//		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+//
+//	//blurAmbiemtMap horizontal is next to the origin ambient map.
+//	//blurAmbientMap vertical use the origin ambient map render target as the final render target
+//	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+//	rtvHandle.ptr += m_rtvDescriptorSize * (FrameCount + NormalMapCount + int(isHorizontal));
+//																							
+//																							
+//	float clearColor[] = { 1.0f,1.0f,1.0f,1.0f };
+//	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+//	m_commandList->OMSetRenderTargets(1, &rtvHandle, true, nullptr);
+//
+//	m_commandList->OMSetStencilRef(0);
+//	m_commandList->SetPipelineState(m_blurSsaoPipelineState.Get());
+//	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+//
+//	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
+//	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
+//	m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
+//
+//	// Use the other ambient map srv
+//	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+//	srvOffset.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + int(!isHorizontal));
+//	m_commandList->SetGraphicsRootDescriptorTable(8, srvOffset);	//AmbientMap
+//
+//	m_commandList->SetGraphicsRoot32BitConstant(9, isHorizontal, 0);	//horizontal or vertical blur
+//
+//	m_commandList->IASetVertexBuffers(0, 0, nullptr);
+//	m_commandList->IASetIndexBuffer(nullptr);
+//
+//	m_commandList->DrawInstanced(6, 1, 0, 0);
+//	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resourcePtr.Get(),
+//		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+//}
 
 void wxGraphicD3D12::PopulateCommandList()
 {
@@ -872,7 +894,7 @@ void wxGame::wxGraphicD3D12::PopulateSkyboxCommandList()
 	m_commandList->SetPipelineState(m_skyboxPipelineState.Get());
 
 	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT);
+	srvOffset.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT);
 	//draw simple geometry
 	for (int i = 0; i < m_vec_MeshSkySphere.size(); i++)
 	{
@@ -1444,7 +1466,7 @@ void wxGraphicD3D12::GenerateCameraDepthMap()
 		IID_PPV_ARGS(&m_cameraDepthMap)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT);
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -1571,7 +1593,7 @@ void wxGraphicD3D12::GenerateAmbientMap()
 	rtvDesc.Texture2D.PlaneSlice = 0;
 	m_device->CreateRenderTargetView(m_AmbientMap1.Get(), &rtvDesc, rtvHandle);
 
-	ThrowIfFailed(m_device->CreateCommittedResource(
+	/*ThrowIfFailed(m_device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
@@ -1598,7 +1620,7 @@ void wxGraphicD3D12::GenerateAmbientMap()
 	rtvDesc.Format = DXGI_FORMAT_R16_UNORM;
 	rtvDesc.Texture2D.MipSlice = 0;
 	rtvDesc.Texture2D.PlaneSlice = 0;
-	m_device->CreateRenderTargetView(m_AmbientMap2.Get(), &rtvDesc, rtvHandle);
+	m_device->CreateRenderTargetView(m_AmbientMap2.Get(), &rtvDesc, rtvHandle);*/
 
 }
 
@@ -1674,7 +1696,7 @@ void wxGraphicD3D12::GenerateRandomVectorTexture()
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount);
+	cbvHandle.ptr += m_TypedDescriptorSize * (TYPE_END * GetSceneGeometryNodeCount() + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -2008,12 +2030,70 @@ void wxGame::wxGraphicD3D12::CreateSSAOBuffer()
 	m_ssaoBuffer->Map(0, &readRange, &m_pCBSSAOBegin);
 	memcpy(m_pCBSSAOBegin, &m_constSSAOBuff, sizeof(wxSSAOConstant));
 	D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT);
+	cbvHandle.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT);
 	
 	D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferView = {};
 	constantBufferView.BufferLocation = m_ssaoBuffer->GetGPUVirtualAddress();
 	constantBufferView.SizeInBytes = ALIGN_256(sizeof(wxSSAOConstant));
 	m_device->CreateConstantBufferView(&constantBufferView, cbvHandle);				//constant matrix for all of the objects;
+}
+
+void wxGame::wxGraphicD3D12::CreateBlurBuffer()
+{
+	HRESULT hr;
+	D3D12_RESOURCE_DESC textureDesc;
+	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	textureDesc.Alignment = 0;
+	textureDesc.Width = m_width / 2;
+	textureDesc.Height = m_height / 2;
+	textureDesc.DepthOrArraySize = 1;
+	textureDesc.MipLevels = 1;
+	textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.SampleDesc.Quality = 0;
+	textureDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	textureDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	
+	hr = m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&textureDesc,
+		D3D12_RESOURCE_STATE_COMMON,
+		nullptr,
+		IID_PPV_ARGS(&(blurHorizentalRes)));
+
+	hr = m_device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&textureDesc,
+		D3D12_RESOURCE_STATE_COMMON,
+		nullptr,
+		IID_PPV_ARGS(&(blurVerticalRes)));
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = 1;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE srvStart = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	srvStart.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount);
+
+	m_device->CreateShaderResourceView(blurHorizentalRes, &srvDesc, srvStart);
+	srvStart.ptr += m_TypedDescriptorSize;
+	m_device->CreateShaderResourceView(blurVerticalRes, &srvDesc, srvStart);
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Texture2D.MipSlice = 0;
+
+	srvStart = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+	srvStart.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount);
+	m_device->CreateUnorderedAccessView(blurHorizentalRes, nullptr, &uavDesc, srvStart);
+	srvStart.ptr += m_TypedDescriptorSize;
+	m_device->CreateUnorderedAccessView(blurVerticalRes, nullptr, &uavDesc, srvStart);
 }
 
 void wxGame::wxGraphicD3D12::CreateCubeTexture(const std::string& name)
@@ -2108,7 +2188,7 @@ void wxGame::wxGraphicD3D12::CreateCubeTexture(const std::string& name)
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CubeMapTexture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE srvStart = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	srvStart.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT);
+	srvStart.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT + CAMERA_DSV_MAP_COUNT);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;

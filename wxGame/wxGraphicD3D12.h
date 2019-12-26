@@ -50,7 +50,9 @@ namespace wxGame {
 	private:
 		static const UINT FrameCount = 2;
 		static const UINT NormalMapCount = 1;
-		static const UINT AmbientMapCount = 2;
+		static const UINT AmbientMapCount = 1;
+		static const UINT GuassianBlurSRVCount = 2;
+		static const UINT GuassianBlurUAVCount = 2;
 		static const UINT TextureWidth = 256;
 		static const UINT TextureHeight = 256;
 		static const UINT TexturePixelSize = 4;	// The number of bytes used to represent a pixel in the texture.
@@ -177,6 +179,8 @@ namespace wxGame {
 		ComPtr<ID3D12PipelineState> m_ssaoPipelineState;
 		ComPtr<ID3D12PipelineState> m_blurSsaoPipelineState;
 		ComPtr<ID3D12PipelineState> m_skyboxPipelineState;
+		ComPtr<ID3D12PipelineState> m_blurHorizentalPipelineState;
+		ComPtr<ID3D12PipelineState> m_blurVerticalPipelineState;
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		UINT m_rtvDescriptorSize;
 
@@ -196,6 +200,8 @@ namespace wxGame {
 		std::vector<wxObjConst> m_vec_GeoObjConstStut;
 		std::vector<ComPtr<ID3D12Resource>> m_vec_GetObjConstRes;
 		std::vector<void*> m_pGeoObjConstDataBegin;
+		ID3D12Resource* blurHorizentalRes;
+		ID3D12Resource* blurVerticalRes;
 
 		ComPtr<ID3D12Resource> m_shadowDepthMap;
 		ComPtr<ID3D12Resource> m_NormalMap;
@@ -246,13 +252,14 @@ namespace wxGame {
 		void CreateObjConst(std::vector<wxObjConst>&, std::vector<ComPtr<ID3D12Resource>>&, std::vector<void*>&);
 		void CreateConstantMatrix();
 		void CreateSSAOBuffer();
+		void CreateBlurBuffer();
 		void CreateCubeTexture(const std::string&);
 		void PopulateCommandList();
 		void PopulateSkyboxCommandList();
 		void PopulateShadowMapCommandList();
 		void PopulateNormalCommandList();
 		void PopulateSSAOCommandList();
-		void PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal);
+		//void PopulateBlurSSAOCommandList(ComPtr<ID3D12Resource> resourcePtr, bool isHorizontal);
 		void WaitForPreviousFrame();
 		void UpdateConstantBuffer(wxTimer* timer);
 		void UpdateShadowMatrix(void);
