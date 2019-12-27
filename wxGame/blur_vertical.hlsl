@@ -13,7 +13,6 @@ cbuffer ssaoMatrix : register(b2)
 static const int gBlurRadius = 5;
 Texture2D verticalMapInput : register(t7);
 RWTexture2D<float4> verticalMapOutput : register(u0);
-static const int g_SampleCount = 14;
 
 #define N 256
 #define CacheSize (N + 2*gBlurRadius)

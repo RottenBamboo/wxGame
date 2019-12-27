@@ -19,13 +19,12 @@ cbuffer ssaoMatrix : register(b2)
 static const int gBlurRadius = 5;
 Texture2D horizentalMapInput : register(t7);
 RWTexture2D<float4> horizentalMapOutput : register(u0);
-static const int g_SampleCount = 14;
 
 #define N 256
 #define CacheSize (N + 2*gBlurRadius)
 groupshared float4 gCache[CacheSize];
 
-[numthreads(N, 1, 1)]
+[numthreads(N , 1, 1)]
 void BlurHortizentalCS( uint3 groupThreadID : SV_GroupThreadID, int3 dispatchThreadID : SV_DispatchThreadID)
 {
 	float BlurWeightsArray[12] =
@@ -34,14 +33,16 @@ void BlurHortizentalCS( uint3 groupThreadID : SV_GroupThreadID, int3 dispatchThr
 		blurWeights[1].x, blurWeights[1].y, blurWeights[1].z, blurWeights[1].w,
 		blurWeights[2].x, blurWeights[2].y, blurWeights[2].z, blurWeights[2].w,
 	};
+	//groupThreadID is thread id in a group.
 	if (groupThreadID.x < gBlurRadius)
 	{
+		//dispatchThreadID is global thread id
+		//dispatchThreadID.x - gBlurRadius clamp left bound sample to 0.
 		int x = max(dispatchThreadID.x - gBlurRadius, 0);
 		gCache[groupThreadID.x] = horizentalMapInput[int2(x, dispatchThreadID.y)];
 	}
 	if (groupThreadID.x >= N - gBlurRadius)
 	{
-		// Clamp out of bound samples that occur at image borders.
 		int x = min(dispatchThreadID.x + gBlurRadius, horizentalMapInput.Length.x - 1);
 		gCache[groupThreadID.x + 2 * gBlurRadius] = horizentalMapInput[int2(x, dispatchThreadID.y)];
 	}
