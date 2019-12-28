@@ -100,8 +100,8 @@ void wxGraphicD3D12::LoadPipeline()
 	// Describe and create the swap chain.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 	swapChainDesc.BufferCount = FrameCount;
-	swapChainDesc.Width = m_width;
-	swapChainDesc.Height = m_height;
+	swapChainDesc.Width = GetWidth();
+	swapChainDesc.Height = GetHeight();
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
@@ -213,8 +213,8 @@ void wxGraphicD3D12::LoadAssets()
 	D3D12_RESOURCE_DESC depthStencilDesc;
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
-	depthStencilDesc.Width = m_width;
-	depthStencilDesc.Height = m_height;
+	depthStencilDesc.Width = GetWidth();
+	depthStencilDesc.Height = GetHeight();
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
 	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
@@ -1009,8 +1009,8 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + 1) * m_TypedDescriptorSize;
 		m_commandList->SetComputeRootDescriptorTable(2, srvConstantBuff);
 
-		int groupNumWidth = ceilf(m_width / 256.f);
-		m_commandList->Dispatch(groupNumWidth, m_height, 1);
+		int groupNumWidth = ceilf((GetWidth() * SSAOCoefficient)/ 256.f);
+		m_commandList->Dispatch(groupNumWidth, GetHeight() / 2, 1);
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
@@ -1027,8 +1027,8 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount) * m_TypedDescriptorSize;
 		m_commandList->SetComputeRootDescriptorTable(2, srvConstantBuff);
 
-		int groupNumHeight = ceilf(m_height / 256.f);
-		m_commandList->Dispatch(m_width, groupNumHeight, 1);
+		int groupNumHeight = ceilf((GetHeight() * SSAOCoefficient)/ 256.f);
+		m_commandList->Dispatch(GetWidth() / 2, groupNumHeight, 1);
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
@@ -1139,8 +1139,8 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	m_constSSAOBuff.occlusionFadeStart = 0.1f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
 	m_constSSAOBuff.surfaceEpsilon = 0.025f;
-	m_constSSAOBuff.ScreenSize[0] = GetWidth() / 2;
-	m_constSSAOBuff.ScreenSize[1] = GetHeight() / 2;
+	m_constSSAOBuff.ScreenSize[0] = GetWidth() * SSAOCoefficient;
+	m_constSSAOBuff.ScreenSize[1] = GetHeight() * SSAOCoefficient;
 
 	UpdateBlurWidget();
 
@@ -1645,8 +1645,8 @@ void wxGraphicD3D12::GenerateAmbientMap()
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
 	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	texDesc.Alignment = 0;
-	texDesc.Width = GetWidth()/2;
-	texDesc.Height = GetHeight()/2;
+	texDesc.Width = GetWidth() * SSAOCoefficient;
+	texDesc.Height = GetHeight() * SSAOCoefficient;
 	texDesc.DepthOrArraySize = 1;
 	texDesc.MipLevels = 1;
 	texDesc.Format = DXGI_FORMAT_R16_UNORM;
@@ -2116,8 +2116,8 @@ void wxGame::wxGraphicD3D12::CreateSSAOBuffer()
 	m_constSSAOBuff.occlusionFadeStart = 0.2f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
 	m_constSSAOBuff.surfaceEpsilon = 0.05f;
-	m_constSSAOBuff.ScreenSize[0] = GetWidth() / 2;
-	m_constSSAOBuff.ScreenSize[1] = GetHeight() / 2;
+	m_constSSAOBuff.ScreenSize[0] = GetWidth() * SSAOCoefficient;
+	m_constSSAOBuff.ScreenSize[1] = GetHeight() * SSAOCoefficient;
 	// Map the constant buffers. Note that unlike D3D11, the resource 
 	// does not need to be unmapped for use by the GPU. In this sample, 
 	// the resource stays 'permenantly' mapped to avoid overhead with 
@@ -2140,8 +2140,8 @@ void wxGame::wxGraphicD3D12::CreateBlurBuffer()
 	D3D12_RESOURCE_DESC textureDesc;
 	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	textureDesc.Alignment = 0;
-	textureDesc.Width = m_width / 2;
-	textureDesc.Height = m_height / 2;
+	textureDesc.Width = GetWidth() * SSAOCoefficient;
+	textureDesc.Height = GetHeight() * SSAOCoefficient;
 	textureDesc.DepthOrArraySize = 1;
 	textureDesc.MipLevels = 1;
 	textureDesc.Format = DXGI_FORMAT_R16_UNORM;
