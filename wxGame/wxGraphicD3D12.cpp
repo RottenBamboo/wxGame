@@ -277,6 +277,37 @@ void wxGraphicD3D12::LoadAssets()
 	}
 }
 
+void wxGame::wxGraphicD3D12::CreateComputeRootSignature()
+{
+	CD3DX12_DESCRIPTOR_RANGE srvTable;
+	srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+	CD3DX12_DESCRIPTOR_RANGE uavTable;
+	uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+
+	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+
+	slotRootParameter[0].InitAsConstants(12, 0);
+	slotRootParameter[1].InitAsDescriptorTable(1, &srvTable);
+	slotRootParameter[2].InitAsDescriptorTable(1, &uavTable);
+
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter,
+		0, nullptr,
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
+	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+	ThrowIfFailed(m_device->CreateRootSignature(
+		0,
+		serializedRootSig->GetBufferPointer(),
+		serializedRootSig->GetBufferSize(),
+		IID_PPV_ARGS(&computeRootSignature)));
+}
+
 void wxGraphicD3D12::CreatePipelineStateObject()
 {
 	HRESULT hr;
@@ -440,6 +471,8 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &signature, &error));
 		ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
 	}
+
+	CreateComputeRootSignature();
 
 	// Create the pipeline state, which includes compiling and loading shaders.
 
@@ -639,18 +672,19 @@ void wxGraphicD3D12::CreatePipelineStateObject()
 		//Gaussian blur compute pso.
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blur_horizontal.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "BlurHortizentalCS", "cs_5_0", compileFlags, 0, &blurHorizentalShader, nullptr));
 		D3D12_COMPUTE_PIPELINE_STATE_DESC blurHorizentalPsoDesc = {};
-		blurHorizentalPsoDesc.pRootSignature = m_rootSignature.Get();
+		blurHorizentalPsoDesc.pRootSignature = computeRootSignature;
 		blurHorizentalPsoDesc.CS = CD3DX12_SHADER_BYTECODE(blurHorizentalShader.Get());
 		blurHorizentalPsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 		ThrowIfFailed(m_device->CreateComputePipelineState(&blurHorizentalPsoDesc, IID_PPV_ARGS(&m_blurHorizentalPipelineState)));
 
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"..\\..\\..\\blur_vertical.hlsl").c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "BlurVerticalCS", "cs_5_0", compileFlags, 0, &blurVerticalShader, nullptr));
 		D3D12_COMPUTE_PIPELINE_STATE_DESC blurVerticalPsoDesc = {};
-		blurVerticalPsoDesc.pRootSignature = m_rootSignature.Get();
+		blurVerticalPsoDesc.pRootSignature = computeRootSignature;
 		blurVerticalPsoDesc.CS = CD3DX12_SHADER_BYTECODE(blurVerticalShader.Get());
 		blurVerticalPsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 		ThrowIfFailed(m_device->CreateComputePipelineState(&blurVerticalPsoDesc, IID_PPV_ARGS(&m_blurVerticalPipelineState)));
 }
+
 void wxGraphicD3D12::PopulateShadowMapCommandList()
 {
 	m_commandList->RSSetViewports(1, &m_shadowmap_Viewport);
@@ -824,12 +858,10 @@ void wxGraphicD3D12::PopulateCommandList()
 
 	PopulateNormalCommandList();
 	PopulateSSAOCommandList();
-	for (int i = 0; i != 3; i++)
-	{
-		//PopulateBlurSSAOCommandList(m_AmbientMap2, true);
-		//PopulateBlurSSAOCommandList(m_AmbientMap1, false);
-	}
+
 	PopulateBlurComputeCommandList();
+	m_commandList->CopyResource(m_AmbientMap1.Get(), blurHorizentalRes);
+
 	PopulateShadowMapCommandList();
 
 	m_commandList->RSSetViewports(1, &m_viewport);
@@ -944,20 +976,20 @@ void wxGraphicD3D12::OnDestroy()
 
 void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 {
-	m_commandList->SetComputeRootSignature(m_rootSignature.Get());
-
+	m_commandList->SetComputeRootSignature(computeRootSignature);
+	m_commandList->SetComputeRoot32BitConstants(0, sizeof(m_constSSAOBuff.blurWeights), &m_constSSAOBuff.blurWeights[0], 1);
 	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
-	srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
-	m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
+	//srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
+	//m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
 
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap1.Get(),
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE));
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes,
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
 
 	// Copy the input (back-buffer in this example) to BlurMap0.
-	m_commandList->CopyResource(blurHorizentalRes, m_renderTargets[m_frameIndex].Get());
+	m_commandList->CopyResource(blurHorizentalRes, m_AmbientMap1.Get());
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes,
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
@@ -965,17 +997,17 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 3; i++)
 	{
 		m_commandList->SetPipelineState(m_blurHorizentalPipelineState.Get());
 		//horizental srv uav
 		D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount) * m_TypedDescriptorSize;
-		m_commandList->SetComputeRootDescriptorTable(9, srvConstantBuff);
+		m_commandList->SetComputeRootDescriptorTable(1, srvConstantBuff);
 
 		srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount) * m_TypedDescriptorSize;
-		m_commandList->SetComputeRootDescriptorTable(10, srvConstantBuff);
+		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + 1) * m_TypedDescriptorSize;
+		m_commandList->SetComputeRootDescriptorTable(2, srvConstantBuff);
 
 		int groupNumWidth = ceilf(m_width / 256.f);
 		m_commandList->Dispatch(groupNumWidth, m_height, 1);
@@ -985,15 +1017,15 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ));
 
 
-		m_commandList->SetPipelineState(m_blurHorizentalPipelineState.Get());
+		m_commandList->SetPipelineState(m_blurVerticalPipelineState.Get());
 		//vertical srv uav
 		srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + 1) * m_TypedDescriptorSize;
-		m_commandList->SetComputeRootDescriptorTable(9, srvConstantBuff);
+		m_commandList->SetComputeRootDescriptorTable(1, srvConstantBuff);
 
 		srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + 1) * m_TypedDescriptorSize;
-		m_commandList->SetComputeRootDescriptorTable(10, srvConstantBuff);
+		srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount) * m_TypedDescriptorSize;
+		m_commandList->SetComputeRootDescriptorTable(2, srvConstantBuff);
 
 		int groupNumHeight = ceilf(m_height / 256.f);
 		m_commandList->Dispatch(m_width, groupNumHeight, 1);
@@ -1107,8 +1139,8 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	m_constSSAOBuff.occlusionFadeStart = 0.1f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
 	m_constSSAOBuff.surfaceEpsilon = 0.025f;
-	m_constSSAOBuff.ScreenSize[0] = GetWidth();
-	m_constSSAOBuff.ScreenSize[1] = GetHeight();
+	m_constSSAOBuff.ScreenSize[0] = GetWidth() / 2;
+	m_constSSAOBuff.ScreenSize[1] = GetHeight() / 2;
 
 	UpdateBlurWidget();
 
@@ -2084,8 +2116,8 @@ void wxGame::wxGraphicD3D12::CreateSSAOBuffer()
 	m_constSSAOBuff.occlusionFadeStart = 0.2f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
 	m_constSSAOBuff.surfaceEpsilon = 0.05f;
-	m_constSSAOBuff.ScreenSize[0] = GetWidth();
-	m_constSSAOBuff.ScreenSize[1] = GetHeight();
+	m_constSSAOBuff.ScreenSize[0] = GetWidth() / 2;
+	m_constSSAOBuff.ScreenSize[1] = GetHeight() / 2;
 	// Map the constant buffers. Note that unlike D3D11, the resource 
 	// does not need to be unmapped for use by the GPU. In this sample, 
 	// the resource stays 'permenantly' mapped to avoid overhead with 
@@ -2112,7 +2144,7 @@ void wxGame::wxGraphicD3D12::CreateBlurBuffer()
 	textureDesc.Height = m_height / 2;
 	textureDesc.DepthOrArraySize = 1;
 	textureDesc.MipLevels = 1;
-	textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	textureDesc.Format = DXGI_FORMAT_R16_UNORM;
 	textureDesc.SampleDesc.Count = 1;
 	textureDesc.SampleDesc.Quality = 0;
 	textureDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -2136,7 +2168,7 @@ void wxGame::wxGraphicD3D12::CreateBlurBuffer()
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.Format = DXGI_FORMAT_R16_UNORM;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.MipLevels = 1;
@@ -2149,7 +2181,7 @@ void wxGame::wxGraphicD3D12::CreateBlurBuffer()
 	m_device->CreateShaderResourceView(blurVerticalRes, &srvDesc, srvStart);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	uavDesc.Format = DXGI_FORMAT_R16_UNORM;
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	uavDesc.Texture2D.MipSlice = 0;
 

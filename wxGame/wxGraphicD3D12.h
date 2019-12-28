@@ -202,6 +202,7 @@ namespace wxGame {
 		std::vector<void*> m_pGeoObjConstDataBegin;
 		ID3D12Resource* blurHorizentalRes;
 		ID3D12Resource* blurVerticalRes;
+		ID3D12RootSignature* computeRootSignature;
 
 		ComPtr<ID3D12Resource> m_shadowDepthMap;
 		ComPtr<ID3D12Resource> m_NormalMap;
@@ -241,6 +242,7 @@ namespace wxGame {
 		void LoadPipeline();
 		void LoadAssets();
 		void CreatePipelineStateObject();
+		void CreateComputeRootSignature();
 		void RetrievalAssetDirectory();
 		void CreateTexture(std::vector<std::string>&);
 		void ParserDataFromScene(std::vector<std::string>&);

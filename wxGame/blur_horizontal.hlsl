@@ -1,23 +1,10 @@
-
-cbuffer cParamContants:register(b3)
+cbuffer cbBlurWeight : register(b0)
 {
-	bool isHorizontal;
-}
-
-cbuffer ssaoMatrix : register(b2)
-{
-	float4 g_offsetVectors[14];
 	float4 blurWeights[3];
-	float g_occlusionRadius;
-	float g_occlusionFadeStart;
-	float g_occlusionFadeEnd;
-	float g_surfaceEpsilon;
-	float DimensionWidth;
-	float DimensionHeight;
 }
 
 static const int gBlurRadius = 5;
-Texture2D horizentalMapInput : register(t7);
+Texture2D horizentalMapInput : register(t0);
 RWTexture2D<float4> horizentalMapOutput : register(u0);
 
 #define N 256
