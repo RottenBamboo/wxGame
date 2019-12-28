@@ -997,7 +997,7 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 1; i++)
 	{
 		m_commandList->SetPipelineState(m_blurHorizentalPipelineState.Get());
 		//horizental srv uav
@@ -1010,7 +1010,7 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 		m_commandList->SetComputeRootDescriptorTable(2, srvConstantBuff);
 
 		int groupNumWidth = ceilf((GetWidth() * SSAOCoefficient)/ 256.f);
-		m_commandList->Dispatch(groupNumWidth, GetHeight() / 2, 1);
+		m_commandList->Dispatch(groupNumWidth, (GetHeight() * SSAOCoefficient), 1);
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
@@ -1028,7 +1028,7 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 		m_commandList->SetComputeRootDescriptorTable(2, srvConstantBuff);
 
 		int groupNumHeight = ceilf((GetHeight() * SSAOCoefficient)/ 256.f);
-		m_commandList->Dispatch(GetWidth() / 2, groupNumHeight, 1);
+		m_commandList->Dispatch((GetWidth() * SSAOCoefficient), groupNumHeight, 1);
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
@@ -1135,10 +1135,11 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	m_constSSAOBuff.offsetVectors[12] = m_offsets[12];
 	m_constSSAOBuff.offsetVectors[13] = m_offsets[13];
 
-	m_constSSAOBuff.occlusionRadius = 0.25f;
-	m_constSSAOBuff.occlusionFadeStart = 0.1f;
+	m_constSSAOBuff.occlusionRadius = 0.5f;
+	m_constSSAOBuff.occlusionFadeStart = 0.2f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
-	m_constSSAOBuff.surfaceEpsilon = 0.025f;
+	m_constSSAOBuff.surfaceEpsilon = 0.05f;
+
 	m_constSSAOBuff.ScreenSize[0] = GetWidth() * SSAOCoefficient;
 	m_constSSAOBuff.ScreenSize[1] = GetHeight() * SSAOCoefficient;
 
