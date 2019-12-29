@@ -100,8 +100,8 @@ void wxGraphicD3D12::LoadPipeline()
 	// Describe and create the swap chain.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 	swapChainDesc.BufferCount = FrameCount;
-	swapChainDesc.Width = m_width;
-	swapChainDesc.Height = m_height;
+	swapChainDesc.Width = GetWidth();
+	swapChainDesc.Height = GetHeight();
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
@@ -213,8 +213,8 @@ void wxGraphicD3D12::LoadAssets()
 	D3D12_RESOURCE_DESC depthStencilDesc;
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
-	depthStencilDesc.Width = m_width;
-	depthStencilDesc.Height = m_height;
+	depthStencilDesc.Width = GetWidth();
+	depthStencilDesc.Height = GetHeight();
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
 	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
@@ -1017,12 +1017,13 @@ void wxGame::wxGraphicD3D12::UpdateSSAO(wxTimer * timer)
 	m_constSSAOBuff.offsetVectors[12] = m_offsets[12];
 	m_constSSAOBuff.offsetVectors[13] = m_offsets[13];
 
-	m_constSSAOBuff.occlusionRadius = 0.25f;
-	m_constSSAOBuff.occlusionFadeStart = 0.1f;
+	m_constSSAOBuff.occlusionRadius = 0.5f;
+	m_constSSAOBuff.occlusionFadeStart = 0.2f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
-	m_constSSAOBuff.surfaceEpsilon = 0.025f;
-	m_constSSAOBuff.ScreenSize[0] = GetWidth();
-	m_constSSAOBuff.ScreenSize[1] = GetHeight();
+	m_constSSAOBuff.surfaceEpsilon = 0.05f;
+
+	m_constSSAOBuff.ScreenSize[0] = GetWidth() * SSAOCoefficient;
+	m_constSSAOBuff.ScreenSize[1] = GetHeight() * SSAOCoefficient;
 
 	UpdateBlurWidget();
 
@@ -1527,8 +1528,8 @@ void wxGraphicD3D12::GenerateAmbientMap()
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
 	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	texDesc.Alignment = 0;
-	texDesc.Width = GetWidth()/2;
-	texDesc.Height = GetHeight()/2;
+	texDesc.Width = GetWidth() * SSAOCoefficient;
+	texDesc.Height = GetHeight() * SSAOCoefficient;
 	texDesc.DepthOrArraySize = 1;
 	texDesc.MipLevels = 1;
 	texDesc.Format = DXGI_FORMAT_R16_UNORM;
@@ -1998,8 +1999,8 @@ void wxGame::wxGraphicD3D12::CreateSSAOBuffer()
 	m_constSSAOBuff.occlusionFadeStart = 0.2f;
 	m_constSSAOBuff.occlusionFadeEnd = 1.0f;
 	m_constSSAOBuff.surfaceEpsilon = 0.05f;
-	m_constSSAOBuff.ScreenSize[0] = GetWidth();
-	m_constSSAOBuff.ScreenSize[1] = GetHeight();
+	m_constSSAOBuff.ScreenSize[0] = GetWidth() * SSAOCoefficient;
+	m_constSSAOBuff.ScreenSize[1] = GetHeight() * SSAOCoefficient;
 	// Map the constant buffers. Note that unlike D3D11, the resource 
 	// does not need to be unmapped for use by the GPU. In this sample, 
 	// the resource stays 'permenantly' mapped to avoid overhead with 

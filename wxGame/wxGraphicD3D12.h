@@ -273,6 +273,7 @@ namespace wxGame {
 
 		float m_cameraMoveBaseSpeed;// = 0.5f;
 		float m_cameraRotationSpeed;// = 0.015f;
+		const float SSAOCoefficient = 0.5f;
 		Vector4FT m_defaultCameraPosition;// = {{ 0.f,2,50.f,1.f }};
 		Vector4FT m_defaultLookAt;// = { 0,0,0.f,0.f };
 		Vector4FT m_defaultUp;// = { 0.f,1.f,0.f,0.f };
