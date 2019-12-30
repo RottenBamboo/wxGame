@@ -44,5 +44,6 @@ void BlurVerticalCS( uint3 groupThreadID : SV_GroupThreadID, int3 dispatchThread
 
 		blurColor += BlurWeightsArray[i + gBlurRadius] * gCache[k];
 	}
+
 	verticalMapOutput[dispatchThreadID.xy] = blurColor;
 }
