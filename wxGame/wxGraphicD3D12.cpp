@@ -285,13 +285,21 @@ void wxGame::wxGraphicD3D12::CreateComputeRootSignature()
 	CD3DX12_DESCRIPTOR_RANGE uavTable;
 	uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+	CD3DX12_DESCRIPTOR_RANGE srvNormalTable;
+	srvNormalTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+
+	CD3DX12_DESCRIPTOR_RANGE srvDepthTable;
+	srvDepthTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
+
+	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 
 	slotRootParameter[0].InitAsConstants(12, 0);
 	slotRootParameter[1].InitAsDescriptorTable(1, &srvTable);
 	slotRootParameter[2].InitAsDescriptorTable(1, &uavTable);
+	slotRootParameter[3].InitAsDescriptorTable(1, &srvNormalTable);
+	slotRootParameter[4].InitAsDescriptorTable(1, &srvDepthTable);
 
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter,
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(5, slotRootParameter,
 		0, nullptr,
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -696,6 +704,11 @@ void wxGraphicD3D12::PopulateShadowMapCommandList()
 	dsvHandle.ptr += m_DepthStencilDescriptorSize * DEFAULT_DSV_MAP_COUNT;
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
+	D3D12_GPU_DESCRIPTOR_HANDLE srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
+	srvOffset.ptr += m_TypedDescriptorSize * (GetSceneGeometryNodeCount() * TYPE_END);
+	m_commandList->SetGraphicsRootDescriptorTable(3, srvOffset);
+
 	m_commandList->OMSetStencilRef(0);
 	m_commandList->OMSetRenderTargets(0, nullptr, false, &dsvHandle);
 	m_commandList->SetPipelineState(m_shadowMapPipelineState.Get());
@@ -790,7 +803,7 @@ void wxGraphicD3D12::PopulateSSAOCommandList()
 	m_commandList->IASetVertexBuffers(0, 0, nullptr);
 	m_commandList->IASetIndexBuffer(nullptr);
 	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + +SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT) * m_TypedDescriptorSize;
+	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT) * m_TypedDescriptorSize;
 	m_commandList->SetGraphicsRootDescriptorTable(4, srvOffset);	//ssao normalmap
 	srvOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
 	srvOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT) * m_TypedDescriptorSize;
@@ -978,9 +991,12 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 {
 	m_commandList->SetComputeRootSignature(computeRootSignature);
 	m_commandList->SetComputeRoot32BitConstants(0, sizeof(m_constSSAOBuff.blurWeights), &m_constSSAOBuff.blurWeights[0], 1);
-	D3D12_GPU_DESCRIPTOR_HANDLE srvConstantBuff = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
-	//srvConstantBuff.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT) * m_TypedDescriptorSize;
-	//m_commandList->SetGraphicsRootDescriptorTable(7, srvConstantBuff);
+	D3D12_GPU_DESCRIPTOR_HANDLE blurOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();		//begin from material cbv append Matrix4X4FT constantBuff and m_sunLightBuff
+	blurOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(3, blurOffset);	//ssao normalmap
+	blurOffset = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	blurOffset.ptr += (GetSceneGeometryNodeCount() * TYPE_END + SUNLIGHT_COUNT + CONSTANTMATRIX_COUNT + SHADOW_DSV_MAP_COUNT + NormalMapCount + AmbientMapCount + GuassianBlurSRVCount + GuassianBlurUAVCount + RANDOM_VECTOR_MAP_COUNT + SSAO_CONSTANT_COUNT) * m_TypedDescriptorSize;
+	m_commandList->SetGraphicsRootDescriptorTable(4, blurOffset);	//depth map
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap1.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE));
