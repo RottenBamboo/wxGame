@@ -151,6 +151,14 @@ namespace wxGame {
 		Vector4FT m_offsets[14]; 
 		ViewFrustum m_frustum;
 
+		float m_cameraMoveBaseSpeed;// = 0.5f;
+		float m_cameraRotationSpeed;// = 0.015f;
+		const float SSAOCoefficient = 0.5f;
+		Vector4FT m_defaultCameraPosition;// = {{ 0.f,2,50.f,1.f }};
+		Vector4FT m_defaultLookAt;// = { 0,0,0.f,0.f };
+		Vector4FT m_defaultUp;// = { 0.f,1.f,0.f,0.f };
+		Vector4FT cameraDistance;// = { 0.f,0.f,0.f,1.f };
+
 		// Pipeline objects.
 		CD3DX12_VIEWPORT m_viewport;
 		CD3DX12_RECT m_scissorRect;
@@ -280,14 +288,6 @@ namespace wxGame {
 		void UpdateFrustumCulling(wxTimer* timer);
 		void UpdateBlurWidget();
 		std::vector<Vector4FT> CalcGaussWeights(float sigma);
-
-		float m_cameraMoveBaseSpeed;// = 0.5f;
-		float m_cameraRotationSpeed;// = 0.015f;
-		const float SSAOCoefficient = 0.5f;
-		Vector4FT m_defaultCameraPosition;// = {{ 0.f,2,50.f,1.f }};
-		Vector4FT m_defaultLookAt;// = { 0,0,0.f,0.f };
-		Vector4FT m_defaultUp;// = { 0.f,1.f,0.f,0.f };
-		Vector4FT cameraDistance;// = { 0.f,0.f,0.f,1.f };
 	};
 
 }
