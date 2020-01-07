@@ -4,10 +4,10 @@ cbuffer cbBlurWeight : register(b0)
 }
 
 static const int gBlurRadius = 5;
-Texture2D verticalMapInput : register(t0);
+Texture2D<float4> verticalMapInput : register(t0);
 RWTexture2D<float4> verticalMapOutput : register(u0);
-Texture2D normalMap : register(t1);
-Texture2D depthMap : register(t2);
+Texture2D<float4> normalMap : register(t1);
+Texture2D<float4> depthMap : register(t2);
 
 #define N 256
 #define CacheSize (N + 2*gBlurRadius)
