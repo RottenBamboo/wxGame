@@ -999,7 +999,7 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 	m_commandList->SetGraphicsRootDescriptorTable(4, blurOffset);	//depth map
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_AmbientMap1.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE));
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes,
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
@@ -1045,10 +1045,10 @@ void wxGame::wxGraphicD3D12::PopulateBlurComputeCommandList()
 
 		int groupNumHeight = ceilf((GetHeight() * SSAOCoefficient)/ 256.f);
 		m_commandList->Dispatch((GetWidth() * SSAOCoefficient), groupNumHeight, 1);
-		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurHorizentalRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ));
 
-		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ));
+		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(blurVerticalRes, D3D12_RESOURCE_STATE_GENERIC_READ,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	}
 }
 
